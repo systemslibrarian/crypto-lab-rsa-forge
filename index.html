@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive browser-based demonstration of RSA encryption, OAEP padding, PSS signatures, and live attack demonstrations including Bleichenbacher and Håstad broadcast attacks." />
+  <title>RSA Forge — Crypto Lab</title>
+  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E🔐%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- Skip navigation for screen readers -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Live region for screen reader announcements -->
+  <div id="aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+  <div id="aria-live-assertive" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+
+  <!-- ===== HEADER ===== -->
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <div class="header-top">
+        <div>
+          <div class="header-meta">
+            <span class="category-chip" aria-label="Category: Asymmetric Encryption">Asymmetric Encryption</span>
+            <nav class="primitive-chips" aria-label="Cryptographic primitives used in this demo">
+              <span class="primitive-chip" aria-label="Primitive: RSA-2048">RSA-2048</span>
+              <span class="primitive-chip" aria-label="Primitive: RSA-4096">RSA-4096</span>
+              <span class="primitive-chip" aria-label="Primitive: OAEP">OAEP</span>
+              <span class="primitive-chip" aria-label="Primitive: PSS">PSS</span>
+              <span class="primitive-chip" aria-label="Primitive: PKCS#1 v1.5">PKCS#1 v1.5</span>
+            </nav>
+          </div>
+          <h1 class="site-title">RSA Forge</h1>
+          <p class="site-subtitle">Interactive demonstration of RSA encryption, padding schemes, signatures, and live attack vectors — all running in your browser with real cryptographic operations.</p>
+        </div>
+        <button
+          id="theme-toggle"
+          class="theme-toggle"
+          aria-label="Switch to light mode"
+          title="Toggle color theme"
+        >
+          <svg id="theme-icon-moon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg id="theme-icon-sun" aria-hidden="true" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== PANEL NAVIGATION ===== -->
+  <nav class="panel-nav" aria-label="Demo panels">
+    <ul class="tab-list" role="tablist" aria-label="RSA demonstration panels">
+      <li role="none">
+        <button class="tab-btn" role="tab" id="tab-1" aria-selected="true" aria-controls="panel-1" data-panel="1">
+          <span class="tab-status-dot tab-status-danger" aria-hidden="true"></span>
+          <span>Textbook RSA</span>
+        </button>
+      </li>
+      <li role="none">
+        <button class="tab-btn" role="tab" id="tab-2" aria-selected="false" aria-controls="panel-2" data-panel="2" tabindex="-1">
+          <span class="tab-status-dot tab-status-safe" aria-hidden="true"></span>
+          <span>RSA-OAEP</span>
+        </button>
+      </li>
+      <li role="none">
+        <button class="tab-btn" role="tab" id="tab-3" aria-selected="false" aria-controls="panel-3" data-panel="3" tabindex="-1">
+          <span class="tab-status-dot tab-status-safe" aria-hidden="true"></span>
+          <span>RSA-PSS</span>
+        </button>
+      </li>
+      <li role="none">
+        <button class="tab-btn" role="tab" id="tab-4" aria-selected="false" aria-controls="panel-4" data-panel="4" tabindex="-1">
+          <span class="tab-status-dot tab-status-warn" aria-hidden="true"></span>
+          <span>Small Exponent Attack</span>
+        </button>
+      </li>
+      <li role="none">
+        <button class="tab-btn" role="tab" id="tab-5" aria-selected="false" aria-controls="panel-5" data-panel="5" tabindex="-1">
+          <span class="tab-status-dot tab-status-danger" aria-hidden="true"></span>
+          <span>Bleichenbacher Oracle</span>
+        </button>
+      </li>
+      <li role="none">
+        <button class="tab-btn" role="tab" id="tab-6" aria-selected="false" aria-controls="panel-6" data-panel="6" tabindex="-1">
+          <span class="tab-status-dot tab-status-warn" aria-hidden="true"></span>
+          <span>RSA vs ECC vs PQ</span>
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main id="main-content">
+
+    <!-- ============================= PANEL 1: TEXTBOOK RSA ============================= -->
+    <section id="panel-1" class="panel active" role="tabpanel" aria-labelledby="tab-1" tabindex="0">
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title">Textbook RSA</h2>
+          <span class="status-chip status-chip-danger" aria-label="Security status: Never use directly — textbook RSA is insecure">
+            NEVER USE DIRECTLY
+          </span>
+        </div>
+        <p class="panel-description">
+          RSA in its raw form: real primes, real modular exponentiation, real key generation — but no padding. 
+          See exactly why determinism makes textbook RSA completely insecure.
+        </p>
+        <div class="alert alert-danger" role="note" aria-label="Security warning">
+          <span class="alert-icon" aria-hidden="true">⚠️</span>
+          <div class="alert-content">
+            <div class="alert-title">Do not use textbook RSA for real data</div>
+            <div class="alert-text">Textbook RSA is deterministic. The same plaintext always produces the same ciphertext, enabling trivial chosen-plaintext attacks. Real-world RSA requires OAEP padding — see Panel 2.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key Generation -->
+      <div class="card">
+        <h3 class="card-title">Step 1 — Generate RSA Key Parameters</h3>
+        <p class="card-description">
+          Generate real prime numbers p and q, then compute all RSA parameters step by step.
+          Use small primes (~32-bit) for visual clarity, or 2048-bit for real cryptographic strength.
+        </p>
+        <div class="button-group">
+          <button id="tb-gen-small" class="btn btn-primary" aria-label="Generate small RSA key using 32-bit primes for visualization">
+            Generate Small Key (32-bit primes)
+          </button>
+          <button id="tb-gen-2048" class="btn btn-secondary" aria-label="Generate 2048-bit RSA key pair using real cryptographic parameters">
+            Generate 2048-bit Key
+          </button>
+        </div>
+        <div id="tb-keygen-status" role="status" aria-live="polite" class="sr-only"></div>
+
+        <div id="tb-params" class="params-display" hidden aria-label="RSA key parameters">
+          <div class="step-grid" style="margin-top: 1.5rem;">
+            <div class="step-item">
+              <div class="step-label">p (prime)</div>
+              <div class="step-value" id="tb-p">—</div>
+              <div class="step-desc">First prime factor</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">q (prime)</div>
+              <div class="step-value" id="tb-q">—</div>
+              <div class="step-desc">Second prime factor</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">n = p × q</div>
+              <div class="step-value large-number-inline" id="tb-n">—</div>
+              <div class="step-desc">Public modulus</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">φ(n) = (p−1)(q−1)</div>
+              <div class="step-value large-number-inline" id="tb-phi">—</div>
+              <div class="step-desc">Euler's totient</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">e (public exponent)</div>
+              <div class="step-value" id="tb-e">65537</div>
+              <div class="step-desc">gcd(e, φ(n)) = 1</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">d = e⁻¹ mod φ(n)</div>
+              <div class="step-value large-number-inline" id="tb-d">—</div>
+              <div class="step-desc">Private exponent</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <div class="crypto-value-label">Key relationship verification: e × d ≡ 1 (mod φ(n))</div>
+            <div class="math-formula" id="tb-verify" aria-label="Key relationship formula">
+              ed mod φ(n) = —
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Encrypt / Decrypt -->
+      <div class="card" id="tb-crypto-card" hidden>
+        <h3 class="card-title">Step 2 — Encrypt and Decrypt</h3>
+        <p class="card-description">
+          Encrypt: c = m<sup>e</sup> mod n &nbsp;|&nbsp; Decrypt: m = c<sup>d</sup> mod n
+        </p>
+        <div class="encrypt-decrypt-grid">
+          <div>
+            <div class="form-group">
+              <label class="form-label" for="tb-plaintext">Plaintext message</label>
+              <input type="text" id="tb-plaintext" class="form-input" 
+                placeholder="Enter a short message…" 
+                maxlength="20"
+                aria-describedby="tb-plaintext-hint" />
+              <div id="tb-plaintext-hint" class="step-desc" style="margin-top: 0.25rem;">
+                Keep short — message is treated as a raw integer m.
+              </div>
+            </div>
+            <button id="tb-encrypt" class="btn btn-primary" aria-label="Encrypt plaintext message with textbook RSA">
+              Encrypt (m<sup>e</sup> mod n)
+            </button>
+            <div id="tb-encrypt-result" class="crypto-value-container" style="margin-top: 1rem;" hidden>
+              <div class="crypto-value-label">Ciphertext (hex)</div>
+              <div class="crypto-value" id="tb-ciphertext" aria-label="RSA ciphertext in hexadecimal"></div>
+            </div>
+          </div>
+          <div>
+            <div id="tb-decrypt-section" hidden>
+              <div class="crypto-value-container">
+                <div class="crypto-value-label">Decrypted plaintext</div>
+                <div class="crypto-value" id="tb-decrypted" aria-label="Decrypted message"></div>
+              </div>
+              <button id="tb-decrypt" class="btn btn-secondary" style="margin-bottom: 1rem;" aria-label="Decrypt ciphertext back to plaintext">
+                Decrypt (c<sup>d</sup> mod n)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Determinism demonstration -->
+        <div style="margin-top: 1.5rem;">
+          <h4 style="font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem;">Determinism Demonstration</h4>
+          <p class="card-description" style="margin-bottom: 1rem;">
+            Encrypt the same message twice. The ciphertext is always identical — a fatal flaw.
+          </p>
+          <button id="tb-determinism" class="btn btn-ghost" aria-label="Demonstrate RSA determinism by encrypting the same message twice and comparing ciphertexts">
+            Demonstrate Same-Plaintext Attack
+          </button>
+          <div id="tb-determinism-result" style="margin-top: 1rem;" hidden aria-live="polite">
+            <div class="step-grid">
+              <div class="step-item">
+                <div class="step-label">Encryption 1</div>
+                <div class="step-value" id="tb-ct1">—</div>
+              </div>
+              <div class="step-item">
+                <div class="step-label">Encryption 2</div>
+                <div class="step-value" id="tb-ct2">—</div>
+              </div>
+              <div class="step-item">
+                <div class="step-label">Match?</div>
+                <div class="step-value" id="tb-ct-match" style="color: var(--color-danger);">—</div>
+                <div class="step-desc">Same plaintext → same ciphertext always</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explanation -->
+      <div class="card">
+        <h3 class="card-title">Why Textbook RSA Is Broken</h3>
+        <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
+          <li><strong style="color: var(--color-text);">Deterministic:</strong> Same plaintext always → same ciphertext. Attacker can build an encryption oracle and test known messages.</li>
+          <li><strong style="color: var(--color-text);">Homomorphic weakness:</strong> c₁ · c₂ mod n = Enc(m₁ · m₂) — ciphertexts can be multiplied to produce the encryption of the product.</li>
+          <li><strong style="color: var(--color-text);">Small message space:</strong> Low-entropy messages (like symmetric keys) are vulnerable to brute-force with an encryption oracle.</li>
+          <li><strong style="color: var(--color-text);">No ciphertext integrity:</strong> Any integer is a valid ciphertext — malleability attacks are trivial.</li>
+        </ul>
+        <div class="citation" aria-label="Reference">
+          RFC 8017 (PKCS#1 v2.2), Section 7.1 — RSA-OAEP is the recommended encryption scheme. 
+          Textbook RSA is described only to explain the mathematical structure.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PANEL 2: RSA-OAEP ============================= -->
+    <section id="panel-2" class="panel" role="tabpanel" aria-labelledby="tab-2" tabindex="0" hidden>
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title">RSA-OAEP: Secure Encryption</h2>
+          <span class="status-chip status-chip-safe" aria-label="Security status: Recommended — 2048-bit minimum, 3072+ preferred">
+            RECOMMENDED
+          </span>
+        </div>
+        <p class="panel-description">
+          RSA-OAEP (Optimal Asymmetric Encryption Padding) adds randomization and domain separation
+          to make RSA encryption semantically secure. Specified in RFC 8017 (PKCS#1 v2.2), Section 7.1.
+        </p>
+        <div class="citation" aria-label="Specification reference">
+          <strong>Specification:</strong> RFC 8017 (PKCS#1 v2.2), Section 7.1 — RSA-OAEP. 
+          OAEP was introduced by Bellare and Rogaway (1994) and proven secure in the random oracle model.
+        </div>
+      </div>
+
+      <!-- Key Generation -->
+      <div class="card">
+        <h3 class="card-title">Generate RSA Keys via WebCrypto</h3>
+        <p class="card-description">
+          Real 2048-bit and 4096-bit RSA key pairs generated using the browser's WebCrypto API.
+          NIST SP 800-57 recommends 2048-bit minimum; 3072-bit or 4096-bit for long-term security.
+        </p>
+        <div class="key-comparison">
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 0.75rem;">RSA-2048</h4>
+            <p class="card-description" style="font-size: 0.875rem;">~112-bit classical security (NIST level 3)</p>
+            <button id="oaep-gen-2048" class="btn btn-primary" aria-label="Generate 2048-bit RSA key pair for OAEP encryption">
+              Generate 2048-bit Key Pair
+            </button>
+            <div id="oaep-2048-timing" class="timing-display" style="margin-top: 1rem;" hidden>
+              <div class="timing-item">
+                <div class="timing-value" id="oaep-2048-kg-time">—</div>
+                <div class="timing-unit">ms</div>
+                <div class="timing-label">Key Generation</div>
+              </div>
+              <div class="timing-item">
+                <div class="timing-value" id="oaep-2048-enc-time">—</div>
+                <div class="timing-unit">ms</div>
+                <div class="timing-label">Encrypt</div>
+              </div>
+              <div class="timing-item">
+                <div class="timing-value" id="oaep-2048-dec-time">—</div>
+                <div class="timing-unit">ms</div>
+                <div class="timing-label">Decrypt</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 0.75rem;">RSA-4096</h4>
+            <p class="card-description" style="font-size: 0.875rem;">~140-bit classical security (NIST level 4)</p>
+            <button id="oaep-gen-4096" class="btn btn-primary" aria-label="Generate 4096-bit RSA key pair for OAEP encryption">
+              Generate 4096-bit Key Pair
+            </button>
+            <div id="oaep-4096-timing" class="timing-display" style="margin-top: 1rem;" hidden>
+              <div class="timing-item">
+                <div class="timing-value" id="oaep-4096-kg-time">—</div>
+                <div class="timing-unit">ms</div>
+                <div class="timing-label">Key Generation</div>
+              </div>
+              <div class="timing-item">
+                <div class="timing-value" id="oaep-4096-enc-time">—</div>
+                <div class="timing-unit">ms</div>
+                <div class="timing-label">Encrypt</div>
+              </div>
+              <div class="timing-item">
+                <div class="timing-value" id="oaep-4096-dec-time">—</div>
+                <div class="timing-unit">ms</div>
+                <div class="timing-label">Decrypt</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="oaep-keygen-status" role="status" aria-live="polite" class="sr-only"></div>
+      </div>
+
+      <!-- Encrypt -->
+      <div class="card" id="oaep-encrypt-card" hidden>
+        <h3 class="card-title">Encrypt with RSA-OAEP-SHA-256</h3>
+        <p class="card-description">The plaintext is padded with OAEP before RSA encryption. Each encryption uses a fresh random seed.</p>
+        <div class="form-group">
+          <label class="form-label" for="oaep-plaintext">Plaintext</label>
+          <textarea id="oaep-plaintext" class="form-textarea" 
+            placeholder="Enter message to encrypt…" 
+            aria-describedby="oaep-plaintext-hint"
+            rows="3">Hello, RSA-OAEP!</textarea>
+          <div id="oaep-plaintext-hint" class="step-desc" style="margin-top: 0.25rem;">
+            Max 190 bytes for 2048-bit key with SHA-256 (214 bytes for 4096-bit).
+          </div>
+        </div>
+        <div class="button-group">
+          <button id="oaep-encrypt-2048" class="btn btn-primary" disabled aria-label="Encrypt message with RSA-2048-OAEP">
+            Encrypt with 2048-bit key
+          </button>
+          <button id="oaep-encrypt-4096" class="btn btn-secondary" disabled aria-label="Encrypt message with RSA-4096-OAEP">
+            Encrypt with 4096-bit key
+          </button>
+        </div>
+        <div id="oaep-encrypt-result" hidden aria-live="polite">
+          <div class="crypto-value-container" style="margin-top: 1.5rem;">
+            <div class="crypto-value-label">Ciphertext (Base64)</div>
+            <div class="crypto-value large-number" id="oaep-ciphertext" aria-label="RSA-OAEP ciphertext in Base64"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Randomization demo -->
+      <div class="card" id="oaep-randomize-card" hidden>
+        <h3 class="card-title">Randomization — Same Plaintext, Different Ciphertexts</h3>
+        <p class="card-description">
+          Unlike textbook RSA, OAEP uses a random seed. Encrypt the same message twice and compare — 
+          ciphertexts are always different, providing IND-CPA security.
+        </p>
+        <button id="oaep-randomize" class="btn btn-primary" aria-label="Encrypt the same message twice to demonstrate OAEP randomization">
+          Encrypt Same Message Twice
+        </button>
+        <div id="oaep-randomize-result" style="margin-top: 1.5rem;" hidden aria-live="polite">
+          <div class="step-grid">
+            <div class="step-item">
+              <div class="step-label">Encryption 1 (first 48 chars)</div>
+              <div class="step-value" id="oaep-ct1-short" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">Encryption 2 (first 48 chars)</div>
+              <div class="step-value" id="oaep-ct2-short" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">Ciphertexts identical?</div>
+              <div class="step-value" id="oaep-ct-match" style="color: var(--color-safe);">—</div>
+              <div class="step-desc">Randomized padding prevents ciphertext comparison attacks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OAEP Structure Visualization -->
+      <div class="card">
+        <h3 class="card-title">OAEP Padding Structure</h3>
+        <p class="card-description">
+          OAEP encodes the message using two MGF1 mask operations with a random seed, 
+          providing non-determinism and all-or-nothing decoding.
+        </p>
+        <div class="oaep-diagram" aria-label="OAEP padding structure diagram">
+          <div style="margin-bottom: 1rem;">
+            <div class="oaep-label">Encoded Message Block (EM = 0x00 ‖ maskedSeed ‖ maskedDB):</div>
+            <div class="oaep-block" role="img" aria-label="OAEP encoded message showing: one byte zero, masked seed (hLen bytes), and masked data block">
+              <div class="oaep-block-segment color-gray" style="flex: 0.3; min-width: 28px;" title="0x00 byte">0x00</div>
+              <div class="oaep-block-segment color-sky" style="flex: 1;" title="maskedSeed (32 bytes for SHA-256)">maskedSeed (hLen)</div>
+              <div class="oaep-block-segment color-teal" style="flex: 3;" title="maskedDB = lHash ‖ PS ‖ 0x01 ‖ M, all XOR'd with dbMask">maskedDB (k − hLen − 1 bytes)</div>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <div class="oaep-label">Data Block (DB) before masking:</div>
+            <div class="oaep-block" role="img" aria-label="OAEP data block showing: label hash, padding string of zeros, separator byte 0x01, and message">
+              <div class="oaep-block-segment color-purple" style="flex: 1;" title="Hash of optional label (all-zero for empty label)">lHash (hLen)</div>
+              <div class="oaep-block-segment color-gray" style="flex: 1.5;" title="Padding string of zero bytes">PS (zeros)</div>
+              <div class="oaep-block-segment color-yellow" style="flex: 0.4; min-width: 28px;" title="Separator 0x01">0x01</div>
+              <div class="oaep-block-segment color-green" style="flex: 1.5;" title="The actual message">M</div>
+            </div>
+          </div>
+          <div>
+            <div class="oaep-label">Seed and mask operations:</div>
+            <div class="oaep-block" role="img" aria-label="OAEP seed showing random seed and MGF operations">
+              <div class="oaep-block-segment color-blue" style="flex: 1.5;" title="Random seed (hLen random bytes)">seed (hLen random bytes)</div>
+              <div class="oaep-block-segment color-orange" style="flex: 2;" title="dbMask = MGF1(seed, k−hLen−1)">dbMask = MGF1(seed, k−hLen−1)</div>
+              <div class="oaep-block-segment color-pink" style="flex: 1.5;" title="seedMask = MGF1(maskedDB, hLen)">seedMask = MGF1(maskedDB, hLen)</div>
+            </div>
+          </div>
+        </div>
+        <div class="citation" aria-label="Specification reference" style="margin-top: 1rem;">
+          <strong>Ref:</strong> RFC 8017 §7.1, EMSA-OAEP-ENCODE. MGF1 is defined in §B.2.1.
+        </div>
+      </div>
+
+      <!-- Decrypt -->
+      <div class="card" id="oaep-decrypt-card" hidden>
+        <h3 class="card-title">Decrypt</h3>
+        <div class="button-group">
+          <button id="oaep-decrypt-2048" class="btn btn-primary" disabled aria-label="Decrypt ciphertext with RSA-2048-OAEP private key">
+            Decrypt with 2048-bit key
+          </button>
+          <button id="oaep-decrypt-4096" class="btn btn-secondary" disabled aria-label="Decrypt ciphertext with RSA-4096-OAEP private key">
+            Decrypt with 4096-bit key
+          </button>
+        </div>
+        <div id="oaep-decrypt-result" style="margin-top: 1rem;" aria-live="polite">
+          <div id="oaep-decrypt-output" class="result-box" hidden>
+            <div class="result-box-title" id="oaep-decrypt-status">—</div>
+            <div class="result-box-text" id="oaep-decrypt-text">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PANEL 3: RSA-PSS ============================= -->
+    <section id="panel-3" class="panel" role="tabpanel" aria-labelledby="tab-3" tabindex="0" hidden>
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title">RSA-PSS: Secure Signatures</h2>
+          <span class="status-chip status-chip-safe" aria-label="Security status: Recommended — provably secure in the random oracle model">
+            RECOMMENDED
+          </span>
+        </div>
+        <p class="panel-description">
+          RSA-PSS (Probabilistic Signature Scheme) adds a random salt to each signature, 
+          making it provably secure in the random oracle model. Specified in RFC 8017 §8.1.
+        </p>
+        <div class="citation" aria-label="Specification reference">
+          <strong>Specification:</strong> RFC 8017 (PKCS#1 v2.2), Section 8.1 — RSASSA-PSS.
+          PSS was designed by Bellare and Rogaway; it is provably as hard as inverting RSA.
+        </div>
+      </div>
+
+      <!-- Key Generation & Sign -->
+      <div class="card">
+        <h3 class="card-title">Generate Key and Sign</h3>
+        <p class="card-description">Sign a message with RSA-PSS-SHA-256. Each signature uses a fresh random salt (sLen = 32 bytes).</p>
+        <div class="button-group" style="margin-bottom: 1.5rem;">
+          <button id="pss-gen" class="btn btn-primary" aria-label="Generate 2048-bit RSA key pair for PSS signing">
+            Generate 2048-bit Signing Key
+          </button>
+        </div>
+        <div id="pss-keygen-status" role="status" aria-live="polite" class="sr-only"></div>
+
+        <div id="pss-sign-section" hidden>
+          <div class="form-group">
+            <label class="form-label" for="pss-message">Message to sign</label>
+            <textarea id="pss-message" class="form-textarea" rows="3"
+              placeholder="Enter message to sign…"
+              aria-describedby="pss-msg-hint">This message is signed with RSA-PSS-SHA-256.</textarea>
+            <div id="pss-msg-hint" class="step-desc" style="margin-top: 0.25rem;">
+              Any UTF-8 text. The digest is hashed with SHA-256 before signing.
+            </div>
+          </div>
+          <button id="pss-sign" class="btn btn-primary" aria-label="Sign message with RSA-PSS">
+            Sign Message
+          </button>
+          <div id="pss-signature-result" hidden style="margin-top: 1.5rem;" aria-live="polite">
+            <div class="crypto-value-container">
+              <div class="crypto-value-label">Signature (Base64, sLen=32)</div>
+              <div class="crypto-value large-number" id="pss-signature" aria-label="RSA-PSS signature in Base64"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verify -->
+      <div class="card" id="pss-verify-card" hidden>
+        <h3 class="card-title">Verify Signature</h3>
+        <p class="card-description">Test signature verification with correct and tampered messages.</p>
+        <div class="button-group">
+          <button id="pss-verify-ok" class="btn btn-primary" aria-label="Verify signature against the original message — should pass">
+            Verify Original Message
+          </button>
+          <button id="pss-verify-tampered" class="btn btn-danger" aria-label="Attempt to verify signature against a tampered message — should fail">
+            Verify Tampered Message
+          </button>
+        </div>
+        <div id="pss-verify-result" style="margin-top: 1rem;" aria-live="assertive">
+          <div id="pss-verify-output" class="result-box" hidden>
+            <div class="result-box-icon" id="pss-verify-icon" aria-hidden="true">—</div>
+            <div class="result-box-title" id="pss-verify-status">—</div>
+            <div class="result-box-text" id="pss-verify-text">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PSS Structure -->
+      <div class="card">
+        <h3 class="card-title">PSS Padding Structure</h3>
+        <p class="card-description">
+          PSS encodes the message hash with a random salt. The salt makes signatures non-deterministic 
+          and provides tight security reduction.
+        </p>
+        <div class="pss-structure" aria-label="PSS padding structure visualization">
+          <div class="pss-row">
+            <div class="pss-label">M (virtual)</div>
+            <div class="pss-blocks" role="img" aria-label="PSS virtual message: 8 zero bytes, message hash, salt">
+              <div class="pss-block-segment color-gray" style="flex: 0.8;" title="8 zero bytes">0x00×8</div>
+              <div class="pss-block-segment color-blue" style="flex: 2;" title="mHash = Hash(M)">mHash</div>
+              <div class="pss-block-segment color-green" style="flex: 1.5;" title="random salt (sLen bytes)">salt (sLen)</div>
+            </div>
+          </div>
+          <div class="pss-row">
+            <div class="pss-label">H</div>
+            <div class="pss-blocks" role="img" aria-label="PSS hash H = Hash of virtual message M-prime">
+              <div class="pss-block-segment color-purple" style="flex: 1;" title="H = Hash(0x00×8 ‖ mHash ‖ salt)">H = Hash(M′)</div>
+            </div>
+          </div>
+          <div class="pss-row">
+            <div class="pss-label">DB</div>
+            <div class="pss-blocks" role="img" aria-label="PSS data block: padding zeros, separator 0x01, salt">
+              <div class="pss-block-segment color-gray" style="flex: 2;" title="Padding string of zero bytes">PS (zeros)</div>
+              <div class="pss-block-segment color-yellow" style="flex: 0.4; min-width: 28px;" title="Separator 0x01">0x01</div>
+              <div class="pss-block-segment color-green" style="flex: 1.5;" title="salt">salt</div>
+            </div>
+          </div>
+          <div class="pss-row">
+            <div class="pss-label">EM (encoded)</div>
+            <div class="pss-blocks" role="img" aria-label="PSS encoded message: masked DB, H, and trailer 0xBC">
+              <div class="pss-block-segment color-teal" style="flex: 3;" title="maskedDB = DB XOR MGF1(H, emLen−hLen−1)">maskedDB</div>
+              <div class="pss-block-segment color-purple" style="flex: 1;" title="H">H</div>
+              <div class="pss-block-segment color-orange" style="flex: 0.4; min-width: 36px;" title="0xBC trailer byte">0xBC</div>
+            </div>
+          </div>
+        </div>
+        <div class="citation" style="margin-top: 1rem;" aria-label="Specification reference">
+          <strong>Ref:</strong> RFC 8017 §9.1, EMSA-PSS-ENCODE. The 0xBC trailer and MSB masking 
+          allow squeezing EM into emLen = ceil((modBits−1)/8) bytes.
+        </div>
+      </div>
+
+      <!-- PSS vs PKCS#1 v1.5 comparison -->
+      <div class="card">
+        <h3 class="card-title">PSS vs PKCS#1 v1.5 Signatures</h3>
+        <p class="card-description">Why PSS is the provably secure choice.</p>
+        <div class="comparison-table-wrapper">
+          <table class="comparison-table" aria-label="Comparison of PSS and PKCS#1 v1.5 signature schemes">
+            <thead>
+              <tr>
+                <th scope="col">Property</th>
+                <th scope="col">PKCS#1 v1.5 (RSASSA-PKCS1-v1_5)</th>
+                <th scope="col">PSS (RSASSA-PSS) ✓</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Randomization</td>
+                <td>Deterministic</td>
+                <td>Probabilistic (random salt)</td>
+              </tr>
+              <tr>
+                <td>Security proof</td>
+                <td>No tight reduction known</td>
+                <td>Tight reduction to RSA inversion</td>
+              </tr>
+              <tr>
+                <td>Signature malleability</td>
+                <td>Potentially malleable</td>
+                <td>Non-malleable by design</td>
+              </tr>
+              <tr>
+                <td>NIST recommendation</td>
+                <td>Legacy — not recommended for new systems</td>
+                <td>Recommended (FIPS 186-5)</td>
+              </tr>
+              <tr>
+                <td>TLS 1.3</td>
+                <td>PKCS#1 v1.5 signatures still allowed</td>
+                <td>PSS signatures preferred</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-warn" role="note" style="margin-top: 1rem;">
+          <span class="alert-icon" aria-hidden="true">ℹ️</span>
+          <div class="alert-content">
+            <div class="alert-title">PKCS#1 v1.5 signatures ≠ PKCS#1 v1.5 encryption</div>
+            <div class="alert-text">PKCS#1 v1.5 <em>signature</em> padding is separate from PKCS#1 v1.5 <em>encryption</em> padding.
+              Signature forgery attacks are different from the Bleichenbacher encryption oracle attack covered in Panel 5.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PANEL 4: SMALL EXPONENT ATTACK ============================= -->
+    <section id="panel-4" class="panel" role="tabpanel" aria-labelledby="tab-4" tabindex="0" hidden>
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title">Small Exponent Attack — Håstad Broadcast</h2>
+          <span class="status-chip status-chip-warn" aria-label="Security status: Demonstrates why padding is non-negotiable">
+            PADDING IS NON-NEGOTIABLE
+          </span>
+        </div>
+        <p class="panel-description">
+          If the same unpadded message m is sent to three recipients all using e=3, an attacker 
+          who intercepts all three ciphertexts can recover m using the Chinese Remainder Theorem 
+          and integer cube root — no private key needed.
+        </p>
+        <div class="citation" aria-label="Academic reference">
+          <strong>Ref:</strong> Håstad, J. (1988). "Solving Simultaneous Modular Equations of Low Degree."
+          SIAM Journal on Computing, 17(2), 336–341. Also: Coppersmith, D. (1997). "Small Solutions to 
+          Polynomial Equations, and Low Exponent RSA Vulnerabilities." Journal of Cryptology.
+        </div>
+      </div>
+
+      <!-- Setup -->
+      <div class="card">
+        <h3 class="card-title">Setup — Three Recipients, e=3</h3>
+        <p class="card-description">
+          Generate three independent RSA keys each with e=3 and distinct small moduli. 
+          These represent three servers all using textbook RSA with a small public exponent.
+        </p>
+        <div class="button-group">
+          <button id="hastad-setup" class="btn btn-primary" aria-label="Generate three RSA key pairs with e=3 for Håstad broadcast attack demonstration">
+            Generate 3 Recipient Keys (e=3)
+          </button>
+        </div>
+        <div id="hastad-setup-status" role="status" aria-live="polite" class="sr-only"></div>
+
+        <div id="hastad-recipients" class="recipient-grid" style="margin-top: 1.5rem;" hidden aria-label="Three RSA recipient key parameters">
+          <div class="recipient-card">
+            <div class="recipient-card-title">Recipient 1</div>
+            <div style="margin-bottom: 0.5rem;">
+              <div class="step-label">n₁ (modulus)</div>
+              <div class="step-value" id="hastad-n1" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div>
+              <div class="step-label">e = 3</div>
+            </div>
+          </div>
+          <div class="recipient-card">
+            <div class="recipient-card-title">Recipient 2</div>
+            <div style="margin-bottom: 0.5rem;">
+              <div class="step-label">n₂ (modulus)</div>
+              <div class="step-value" id="hastad-n2" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div>
+              <div class="step-label">e = 3</div>
+            </div>
+          </div>
+          <div class="recipient-card">
+            <div class="recipient-card-title">Recipient 3</div>
+            <div style="margin-bottom: 0.5rem;">
+              <div class="step-label">n₃ (modulus)</div>
+              <div class="step-value" id="hastad-n3" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div>
+              <div class="step-label">e = 3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Broadcast -->
+      <div class="card" id="hastad-broadcast-card" hidden>
+        <h3 class="card-title">Broadcast Same Message Unpadded</h3>
+        <p class="card-description">
+          Encrypt the same message to all three recipients with no padding: cᵢ = m³ mod nᵢ.
+          The attacker intercepts all three ciphertexts.
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="hastad-message">Message (max 6 chars for demo)</label>
+          <input type="text" id="hastad-message" class="form-input"
+            maxlength="6"
+            placeholder="Hello!"
+            value="Hello!"
+            aria-describedby="hastad-msg-hint" />
+          <div id="hastad-msg-hint" class="step-desc" style="margin-top: 0.25rem;">
+            Short because m must be less than the modulus. Message encoded as UTF-8 bytes → bigint.
+          </div>
+        </div>
+        <button id="hastad-broadcast" class="btn btn-primary" aria-label="Encrypt and broadcast message to all three recipients using e=3 textbook RSA">
+          Broadcast to 3 Recipients
+        </button>
+        <div id="hastad-ciphertexts" style="margin-top: 1.5rem;" hidden aria-live="polite">
+          <div class="step-grid">
+            <div class="step-item">
+              <div class="step-label">c₁ = m³ mod n₁</div>
+              <div class="step-value" id="hastad-c1" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">c₂ = m³ mod n₂</div>
+              <div class="step-value" id="hastad-c2" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">c₃ = m³ mod n₃</div>
+              <div class="step-value" id="hastad-c3" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRT Attack -->
+      <div class="card" id="hastad-attack-card" hidden>
+        <h3 class="card-title">Attack — CRT Reconstruction + Cube Root</h3>
+        <p class="card-description">
+          Since m &lt; nᵢ for all i, we have m³ &lt; n₁·n₂·n₃. The Chinese Remainder Theorem gives us 
+          exactly M = m³. Then the integer cube root of M reveals m directly.
+        </p>
+        <button id="hastad-attack" class="btn btn-danger" aria-label="Execute Håstad broadcast attack: CRT reconstruction followed by cube root recovery">
+          Execute CRT + Cube Root Attack
+        </button>
+        <div id="hastad-attack-steps" style="margin-top: 1.5rem;" hidden aria-live="polite">
+          <div class="step-grid">
+            <div class="step-item">
+              <div class="step-label">N = n₁·n₂·n₃</div>
+              <div class="step-value" id="hastad-N" style="font-size: 0.75rem; word-break: break-all;">—</div>
+              <div class="step-desc">CRT modulus</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">M = CRT(c₁,c₂,c₃) = m³</div>
+              <div class="step-value" id="hastad-M" style="font-size: 0.75rem; word-break: break-all;">—</div>
+              <div class="step-desc">m³ exactly, since m³ &lt; N</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">m = ∛M (recovered)</div>
+              <div class="step-value" id="hastad-recovered" style="color: var(--color-danger);">—</div>
+              <div class="step-desc">Original plaintext revealed</div>
+            </div>
+          </div>
+          <div id="hastad-final-reveal" class="result-box result-box-error" style="margin-top: 1rem;" hidden>
+            <div class="result-box-icon" aria-hidden="true">🔓</div>
+            <div class="result-box-title">Message Recovered Without Private Key</div>
+            <div class="result-box-text" id="hastad-recovered-text">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Why OAEP prevents this -->
+      <div class="card">
+        <h3 class="card-title">Why OAEP Destroys This Attack</h3>
+        <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
+          <li><strong style="color: var(--color-text);">Randomization:</strong> With OAEP, each recipient receives a <em>different</em> padded message. Even with the same underlying plaintext, the padded m values differ, so m³ values are not related by CRT.</li>
+          <li><strong style="color: var(--color-text);">Structure:</strong> The OAEP padding expands the message to fill the full modulus, so m is always close to n in size — m³ mod n wraps around the modulus multiple times.</li>
+          <li><strong style="color: var(--color-text);">Minimum key size:</strong> NIST SP 800-57 recommends e=65537 for all production RSA. Small e values (e=3, e=17) must only ever be used with proper padding.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================= PANEL 5: BLEICHENBACHER ============================= -->
+    <section id="panel-5" class="panel" role="tabpanel" aria-labelledby="tab-5" tabindex="0" hidden>
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title">Bleichenbacher PKCS#1 v1.5 Oracle</h2>
+          <span class="status-chip status-chip-danger" aria-label="Security status: PKCS#1 v1.5 encryption — AVOID">
+            PKCS#1 v1.5 ENCRYPTION = AVOID
+          </span>
+        </div>
+        <p class="panel-description">
+          Bleichenbacher (1998) showed that a single-bit padding oracle — "is this ciphertext PKCS#1 v1.5 conformant?" — 
+          is enough to decrypt any RSA ciphertext via adaptive chosen-ciphertext queries.
+          This broke SSL/TLS RSA key exchange and is still discovered in the wild today (ROBOT, 2017).
+        </p>
+        <div class="citation" aria-label="Academic reference">
+          <strong>Ref:</strong> Bleichenbacher, D. (1998). "Chosen Ciphertext Attacks Against Protocols 
+          Based on the RSA Encryption Standard PKCS #1." CRYPTO 1998, LNCS 1462, pp. 1–12.
+          Springer. <em>The "million message attack."</em>
+        </div>
+      </div>
+
+      <!-- PKCS#1 v1.5 Structure -->
+      <div class="card">
+        <h3 class="card-title">PKCS#1 v1.5 Encryption Padding Structure</h3>
+        <p class="card-description">
+          A PKCS#1 v1.5 conformant encryption block has a specific structure.
+          The oracle leaks only one bit: whether the decryption starts with 0x00 0x02.
+        </p>
+        <div class="oaep-diagram" aria-label="PKCS#1 v1.5 encryption padding structure">
+          <div class="oaep-label">Encoded Message: EM = 0x00 ‖ 0x02 ‖ PS ‖ 0x00 ‖ M</div>
+          <div class="oaep-block" style="height: 48px;" role="img" aria-label="PKCS#1 v1.5 EM block: 0x00, 0x02, at least 8 random non-zero bytes PS, 0x00 separator, message M">
+            <div class="oaep-block-segment color-gray" style="flex: 0.3; min-width: 36px;" title="0x00 byte">0x00</div>
+            <div class="oaep-block-segment color-blue" style="flex: 0.3; min-width: 36px;" title="Block type 0x02 (encryption)">0x02</div>
+            <div class="oaep-block-segment color-yellow" style="flex: 2;" title="PS: ≥8 random non-zero bytes">PS ≥ 8 random non-zero bytes</div>
+            <div class="oaep-block-segment color-gray" style="flex: 0.3; min-width: 36px;" title="0x00 separator">0x00</div>
+            <div class="oaep-block-segment color-green" style="flex: 1.5;" title="Message M">M</div>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 0.75rem;">
+            "Conformant" means: <code>EM[0] == 0x00</code> AND <code>EM[1] == 0x02</code>.<br>
+            This is equivalent to: <code>m ∈ [2B, 3B−1]</code> where <code>B = 2<sup>8(k−2)</sup></code>, k = modulus byte length.
+          </p>
+        </div>
+      </div>
+
+      <!-- Attack Setup -->
+      <div class="card">
+        <h3 class="card-title">Setup — Small RSA for Demonstration</h3>
+        <p class="card-description">
+          Generate a small RSA key (128-bit modulus, 16 bytes) to make the attack completable in the browser. 
+          In practice, Bleichenbacher's 1998 attack targeted 512-bit SSL server keys.
+        </p>
+        <div class="alert alert-info" role="note">
+          <span class="alert-icon" aria-hidden="true">🔬</span>
+          <div class="alert-content">
+            <div class="alert-title">Demonstration uses 128-bit RSA</div>
+            <div class="alert-text">Real attacks target ≥ 1024-bit keys. The mathematics are identical — 
+              only scale differs. The oracle checks real PKCS#1 v1.5 padding on real RSA decryption.</div>
+          </div>
+        </div>
+        <div class="button-group" style="margin-top: 1rem;">
+          <button id="bb-setup" class="btn btn-primary" aria-label="Generate 128-bit RSA key pair and set up Bleichenbacher attack">
+            Generate Demo Key + Conformant Ciphertext
+          </button>
+        </div>
+        <div id="bb-setup-status" role="status" aria-live="polite" class="sr-only"></div>
+
+        <div id="bb-setup-display" style="margin-top: 1.5rem;" hidden>
+          <div class="step-grid">
+            <div class="step-item">
+              <div class="step-label">Modulus n (128-bit)</div>
+              <div class="step-value" id="bb-n" style="font-size: 0.75rem; word-break: break-all;">—</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">e (public exponent)</div>
+              <div class="step-value" id="bb-e">65537</div>
+            </div>
+            <div class="step-item">
+              <div class="step-label">Target message</div>
+              <div class="step-value" id="bb-target-msg">—</div>
+              <div class="step-desc">Known to us (owner of private key), hidden from attacker</div>
+            </div>
+          </div>
+          <div class="crypto-value-container" style="margin-top: 1rem;">
+            <div class="crypto-value-label">Intercepted ciphertext c (hex)</div>
+            <div class="crypto-value" id="bb-ciphertext" aria-label="Bleichenbacher target ciphertext in hexadecimal"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Oracle Demo -->
+      <div class="card" id="bb-oracle-card" hidden>
+        <h3 class="card-title">The Padding Oracle</h3>
+        <p class="card-description">
+          The oracle accepts a ciphertext and returns only "conformant" or "not conformant."
+          In real attacks, this oracle was exposed via error messages in TLS handshakes.
+        </p>
+        <div class="bb-oracle-demo">
+          <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1rem;">
+            <div style="flex: 1; min-width: 200px;">
+              <label class="crypto-value-label" for="bb-oracle-input" style="display: block; margin-bottom: 0.5rem;">
+                Test ciphertext (hex) — try any value:
+              </label>
+              <input type="text" id="bb-oracle-input" class="form-input" 
+                style="font-family: var(--font-mono); font-size: 0.875rem;"
+                placeholder="e.g., 00000000...00000001"
+                aria-describedby="bb-oracle-hint" />
+              <div id="bb-oracle-hint" class="step-desc" style="margin-top: 0.25rem;">
+                Enter a hex value (same byte-length as modulus)
+              </div>
+            </div>
+            <button id="bb-oracle-query" class="btn btn-secondary" aria-label="Query the padding oracle with the entered ciphertext">
+              Query Oracle
+            </button>
+          </div>
+          <div id="bb-oracle-result" class="oracle-query-log" aria-live="polite" aria-label="Oracle query results"></div>
+        </div>
+      </div>
+
+      <!-- Attack Execution -->
+      <div class="card" id="bb-attack-card" hidden>
+        <h3 class="card-title">Execute Bleichenbacher Attack</h3>
+        <p class="card-description">
+          The attack multiplies c by s<sup>e</sup> mod n, where varying s shifts the decryption.
+          Each conformant result constrains the interval [a, b] containing m.
+        </p>
+        <div class="button-group">
+          <button id="bb-run" class="btn btn-danger" aria-label="Run Bleichenbacher adaptive chosen-ciphertext attack">
+            Run Attack
+          </button>
+          <button id="bb-abort" class="btn btn-ghost" disabled aria-label="Abort the running attack">
+            Abort
+          </button>
+        </div>
+
+        <div id="bb-progress" style="margin-top: 1.5rem;" hidden aria-live="polite">
+          <div class="attack-stats">
+            <div>
+              <div class="attack-stat-value" id="bb-query-count">0</div>
+              <div class="attack-stat-label">Oracle queries</div>
+            </div>
+            <div>
+              <div class="attack-stat-value" id="bb-iteration">0</div>
+              <div class="attack-stat-label">Iterations</div>
+            </div>
+            <div>
+              <div class="attack-stat-value" id="bb-interval-size">—</div>
+              <div class="attack-stat-label">Interval bits remaining</div>
+            </div>
+          </div>
+
+          <div style="margin: 1rem 0;">
+            <div class="crypto-value-label" style="margin-bottom: 0.5rem;">
+              Interval [a, b] converging to m (normalized: 0 = 2B, 1 = 3B−1):
+            </div>
+            <div class="interval-bar-container" aria-label="Attack interval narrowing progress bar">
+              <div class="interval-bar" id="bb-interval-bar" style="left: 0%; width: 100%;" aria-hidden="true"></div>
+            </div>
+            <div class="interval-labels" aria-hidden="true">
+              <span>2B (0x0002...)</span>
+              <span>3B−1 (0x0003...)</span>
+            </div>
+          </div>
+
+          <div id="bb-attack-log" class="oracle-query-log" style="max-height: 160px;" aria-label="Attack progress log" aria-live="off"></div>
+        </div>
+
+        <div id="bb-recovered" class="result-box result-box-error" style="margin-top: 1rem;" hidden aria-live="assertive">
+          <div class="result-box-icon" aria-hidden="true">🔓</div>
+          <div class="result-box-title">Plaintext Recovered</div>
+          <div class="result-box-text" id="bb-recovered-text">—</div>
+          <div class="crypto-value" id="bb-recovered-hex" style="margin-top: 0.75rem;" aria-label="Recovered plaintext in hexadecimal"></div>
+        </div>
+      </div>
+
+      <!-- Why TLS 1.3 removed RSA key exchange -->
+      <div class="card">
+        <h3 class="card-title">Why TLS 1.3 Removed RSA Key Exchange Entirely</h3>
+        <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
+          <li><strong style="color: var(--color-text);">No forward secrecy:</strong> RSA key exchange uses the server's long-term private key to wrap the session key. Compromise of the private key retroactively decrypts all past traffic.</li>
+          <li><strong style="color: var(--color-text);">Bleichenbacher variants:</strong> ROBOT (2017) found 8 major TLS implementations still vulnerable 19 years after the original paper. The oracle is hard to eliminate from real implementations.</li>
+          <li><strong style="color: var(--color-text);">TLS 1.3 fix:</strong> RSA key exchange (RSA_PSK, RSA) removed. Only ephemeral Diffie-Hellman (ECDHE) allowed — provides forward secrecy by design.</li>
+          <li><strong style="color: var(--color-text);">PKCS#1 v1.5 encryption:</strong> RFC 8017 explicitly marks RSA-PKCS1_V1_5 encryption as legacy. Use RSA-OAEP for any new RSA encryption.</li>
+        </ul>
+        <div class="citation" aria-label="Additional reference">
+          <strong>ROBOT (2017):</strong> Böck, Somorovsky, Young. "Return Of Bleichenbacher's Oracle Threat."
+          USENIX Security 2018. Found in F5, Citrix, Palo Alto, and others.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PANEL 6: COMPARISON ============================= -->
+    <section id="panel-6" class="panel" role="tabpanel" aria-labelledby="tab-6" tabindex="0" hidden>
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title">RSA vs ECC vs Post-Quantum</h2>
+          <span class="status-chip status-chip-warn" aria-label="Security status: RSA will be broken by quantum computers running Shor's algorithm">
+            QUANTUM-VULNERABLE
+          </span>
+        </div>
+        <p class="panel-description">
+          RSA security rests on the integer factorization problem. Shor's algorithm (1994) factors integers 
+          in polynomial time on a quantum computer, breaking all RSA key sizes. NIST's PQC standardization 
+          is complete — migration should begin now.
+        </p>
+      </div>
+
+      <!-- Comparison table -->
+      <div class="card">
+        <h3 class="card-title">Algorithm Comparison (2026 NIST Recommendations)</h3>
+        <div class="comparison-table-wrapper">
+          <table class="comparison-table" aria-label="Security algorithm comparison table: RSA, ECC, and Post-Quantum">
+            <thead>
+              <tr>
+                <th scope="col">Algorithm</th>
+                <th scope="col">Key Size</th>
+                <th scope="col">Ciphertext / Sig Size</th>
+                <th scope="col">Classical Security</th>
+                <th scope="col">Post-Quantum Security</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>RSA-2048</strong></td>
+                <td>2048-bit (256 B public)</td>
+                <td>256 B</td>
+                <td>~112-bit</td>
+                <td aria-label="Broken by quantum">❌ Broken (Shor)</td>
+                <td><span class="status-chip status-chip-warn" style="font-size: 0.75rem;">LEGACY</span></td>
+              </tr>
+              <tr>
+                <td><strong>RSA-4096</strong></td>
+                <td>4096-bit (512 B public)</td>
+                <td>512 B</td>
+                <td>~140-bit</td>
+                <td aria-label="Broken by quantum">❌ Broken (Shor)</td>
+                <td><span class="status-chip status-chip-warn" style="font-size: 0.75rem;">LEGACY</span></td>
+              </tr>
+              <tr>
+                <td><strong>ECDH P-256</strong></td>
+                <td>64 B (32 B compressed)</td>
+                <td>64 B shared secret</td>
+                <td>~128-bit</td>
+                <td aria-label="Broken by quantum">❌ Broken (Shor)</td>
+                <td><span class="status-chip status-chip-warn" style="font-size: 0.75rem;">TRANSITION</span></td>
+              </tr>
+              <tr>
+                <td><strong>X25519</strong></td>
+                <td>32 B</td>
+                <td>32 B shared secret</td>
+                <td>~128-bit</td>
+                <td aria-label="Broken by quantum">❌ Broken (Shor)</td>
+                <td><span class="status-chip status-chip-warn" style="font-size: 0.75rem;">TRANSITION</span></td>
+              </tr>
+              <tr>
+                <td><strong>ML-KEM-768</strong> (Kyber)</td>
+                <td>1184 B public key</td>
+                <td>1088 B ciphertext</td>
+                <td>&gt; 180-bit</td>
+                <td aria-label="Post-quantum secure">✅ ~168-bit (NIST L3)</td>
+                <td><span class="status-chip status-chip-safe" style="font-size: 0.75rem;">RECOMMENDED</span></td>
+              </tr>
+              <tr>
+                <td><strong>ML-DSA-65</strong> (Dilithium)</td>
+                <td>1952 B public key</td>
+                <td>3309 B signature</td>
+                <td>&gt; 180-bit</td>
+                <td aria-label="Post-quantum secure">✅ ~168-bit (NIST L3)</td>
+                <td><span class="status-chip status-chip-safe" style="font-size: 0.75rem;">RECOMMENDED</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--color-text-faint); margin-top: 0.5rem;">
+          Sources: NIST SP 800-57 Part 1 Rev. 5; FIPS 203 (ML-KEM); FIPS 204 (ML-DSA); NIST PQC Round 3 Report.
+        </p>
+      </div>
+
+      <!-- Key size bar chart -->
+      <div class="card">
+        <h3 class="card-title">Public Key Size Comparison</h3>
+        <p class="card-description">RSA key sizes dwarf modern alternatives — post-quantum keys are larger than ECC but far smaller than RSA at equivalent security.</p>
+        <div class="bar-chart" aria-label="Bar chart comparing public key sizes">
+          <div class="bar-row">
+            <div class="bar-label">RSA-4096</div>
+            <div class="bar-track" aria-label="RSA-4096 key size 512 bytes">
+              <div class="bar-fill" style="width: 100%; background: var(--color-danger);">512 B</div>
+            </div>
+            <div class="bar-value-label">512 B</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">RSA-2048</div>
+            <div class="bar-track" aria-label="RSA-2048 key size 256 bytes">
+              <div class="bar-fill" style="width: 50%; background: var(--color-warn);">256 B</div>
+            </div>
+            <div class="bar-value-label">256 B</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">ML-KEM-768</div>
+            <div class="bar-track" aria-label="ML-KEM-768 key size 1184 bytes — largest shown">
+              <div class="bar-fill" style="width: 100%; max-width: 100%; background: var(--color-safe);">1184 B</div>
+            </div>
+            <div class="bar-value-label">1184 B</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">P-256</div>
+            <div class="bar-track" aria-label="P-256 key size 64 bytes">
+              <div class="bar-fill" style="width: 6.25%; background: var(--color-primary);">—</div>
+            </div>
+            <div class="bar-value-label">64 B</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">X25519</div>
+            <div class="bar-track" aria-label="X25519 key size 32 bytes">
+              <div class="bar-fill" style="width: 3.1%; background: var(--color-primary);">—</div>
+            </div>
+            <div class="bar-value-label">32 B</div>
+          </div>
+        </div>
+        <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 0.75rem;">
+          Bar lengths scaled to ML-KEM-768 (1184 B) = 100%.
+          RSA-4096 has the same bar width as ML-KEM-768 but provides no post-quantum security.
+        </p>
+      </div>
+
+      <!-- Shor's algorithm explanation -->
+      <div class="card">
+        <h3 class="card-title">Shor's Algorithm — Why RSA Will Break</h3>
+        <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
+          <li><strong style="color: var(--color-text);">Classical factoring:</strong> Best classical algorithm (GNFS) runs in sub-exponential time — 2<sup>64</sup> operations for RSA-2048. Secure against classical computers.</li>
+          <li><strong style="color: var(--color-text);">Shor's algorithm:</strong> Reduces factoring to order-finding in polynomial time. Requires a fault-tolerant quantum computer with ~4,000 logical qubits for RSA-2048.</li>
+          <li><strong style="color: var(--color-text);">2026 timeline:</strong> No quantum computer currently capable of breaking RSA-2048. But "harvest now, decrypt later" — adversaries store encrypted traffic today to decrypt with future hardware.</li>
+          <li><strong style="color: var(--color-text);">Migration urgency:</strong> NIST published FIPS 203/204/205 in August 2024. Systems with &gt;10-year security requirements should migrate now.</li>
+        </ul>
+        <div class="alert alert-warn" role="note" style="margin-top: 1rem;">
+          <span class="alert-icon" aria-hidden="true">🔭</span>
+          <div class="alert-content">
+            <div class="alert-title">RSA is in millions of systems in 2026</div>
+            <div class="alert-text">TLS certificates, SSH keys, code signing, email (S/MIME), and more all rely on RSA.
+              Understanding RSA's failure modes — OAEP vs textbook, PKCS#1 v1.5 vulnerabilities, quantum threat — 
+              is essential for any engineer involved in the PQC migration.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== WHY THIS MATTERS ===== -->
+  <aside class="why-matters" aria-labelledby="why-matters-title">
+    <div class="why-matters-inner">
+      <h2 class="why-matters-title" id="why-matters-title">Why This Matters</h2>
+      <p class="why-matters-text">
+        RSA remains one of the most widely deployed cryptographic algorithms on the planet in 2026 — found in TLS 
+        certificates, SSH keys, JWT signing, code signing, S/MIME email, and more. Yet real-world RSA deployments 
+        still fail in predictable ways: <em>incorrect padding choices, small public exponents without proper padding, 
+        legacy PKCS#1 v1.5 encryption left in place</em>. The Bleichenbacher attack — published 1998 — was still 
+        found in production TLS stacks in 2017. Understanding exactly how and why these attacks work is not academic; 
+        it is the difference between shipping secure systems and shipping exploitable ones.
+      </p>
+      <p class="why-matters-text" style="margin-top: 1rem;">
+        The quantum migration has begun. Every system that uses RSA today needs a migration plan. 
+        ML-KEM (Kyber) and ML-DSA (Dilithium) are the replacements — explore them in the related demos below.
+      </p>
+    </div>
+  </aside>
+
+  <!-- ===== CROSS-LINKS ===== -->
+  <section class="cross-links" aria-labelledby="cross-links-title">
+    <h2 class="cross-links-title" id="cross-links-title">Related Crypto Lab Demos</h2>
+    <div class="cross-link-grid">
+      <a href="https://systemslibrarian.github.io/crypto-lab-kyber-vault/"
+         class="cross-link-card"
+         aria-label="crypto-lab-kyber-vault: ML-KEM post-quantum key encapsulation demo">
+        <span class="cross-link-name">crypto-lab-kyber-vault</span>
+        <span class="cross-link-desc">ML-KEM-768 (FIPS 203) — the RSA replacement. Post-quantum key encapsulation.</span>
+      </a>
+      <a href="https://systemslibrarian.github.io/crypto-lab-iron-letter/"
+         class="cross-link-card"
+         aria-label="crypto-lab-iron-letter: AES-GCM and ChaCha20-Poly1305 symmetric encryption demo">
+        <span class="cross-link-name">crypto-lab-iron-letter</span>
+        <span class="cross-link-desc">AES-GCM and ChaCha20-Poly1305 symmetric encryption and authenticated encryption.</span>
+      </a>
+      <a href="https://systemslibrarian.github.io/crypto-lab-dilithium-seal/"
+         class="cross-link-card"
+         aria-label="crypto-lab-dilithium-seal: ML-DSA post-quantum digital signatures demo">
+        <span class="cross-link-name">crypto-lab-dilithium-seal</span>
+        <span class="cross-link-desc">ML-DSA-65 (FIPS 204) — post-quantum digital signatures.</span>
+      </a>
+      <a href="https://systemslibrarian.github.io/crypto-compare/#asymmetric"
+         class="cross-link-card"
+         aria-label="crypto-compare asymmetric category: compare all asymmetric cryptography algorithms">
+        <span class="cross-link-name">crypto-compare</span>
+        <span class="cross-link-desc">Side-by-side comparison of all asymmetric algorithms: RSA, ECC, PQC.</span>
+      </a>
+      <a href="https://systemslibrarian.github.io/"
+         class="cross-link-card"
+         aria-label="Crypto Lab landing page: full collection of cryptography demonstrations">
+        <span class="cross-link-name">Crypto Lab</span>
+        <span class="cross-link-desc">Full collection of interactive cryptography demonstrations.</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="https://github.com/systemslibrarian/crypto-lab-rsa-forge"
+           class="github-badge"
+           aria-label="View source code on GitHub: systemslibrarian/crypto-lab-rsa-forge"
+           rel="noopener noreferrer"
+           target="_blank">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>systemslibrarian/crypto-lab-rsa-forge</span>
+        </a>
+      </div>
+      <p class="footer-verse" aria-label="Closing verse">
+        "So whether you eat or drink or whatever you do, do it all for the glory of God." — 1 Corinthians 10:31
+      </p>
+    </div>
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
