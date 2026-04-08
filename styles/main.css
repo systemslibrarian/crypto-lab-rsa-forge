@@ -248,26 +248,28 @@ img, svg { display: block; max-width: 100%; }
   line-height: 1.6;
 }
 
-/* Theme toggle — min 44×44 tap target */
+/* Theme toggle — circular icon-only button, min 44×44 tap target */
 .theme-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 2.6rem;
+  height: 2.6rem;
   flex-shrink: 0;
   border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg);
+  border-radius: 50%;
   background: var(--c-bg-card);
   color: var(--c-text);
   cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 .theme-toggle:hover {
   background: var(--c-bg-elevated);
   border-color: var(--c-primary);
 }
-.theme-toggle svg { width: 20px; height: 20px; }
 
 /* ── Navigation ─────────────────────────────────────────────── */
 .panel-nav {

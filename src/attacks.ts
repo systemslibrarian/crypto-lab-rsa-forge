@@ -21,7 +21,7 @@ import {
 } from './textbook.js';
 import {
   announce, announceUrgent, show, hide, setText, setLoading,
-  bigintToHex, bigintToBytes, bytesToBigint, fromHex, toHex, ceilDiv,
+  bigintToHex, bigintToBytes, bytesToBigint, fromHex, ceilDiv,
 } from './ui.js';
 
 /* ════════════════════════════════════════════════════════════

@@ -10,7 +10,7 @@
  */
 
 import {
-  announce, show, hide, setText, setLoading,
+  announce, show, setText, setLoading,
   bigintToHex, bytesToBigint,
 } from './ui.js';
 

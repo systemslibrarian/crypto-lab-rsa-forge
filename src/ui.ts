@@ -11,20 +11,18 @@ export function initUI(): void {
 /* ── Theme ─────────────────────────────────────────────────── */
 function initTheme(): void {
   const toggle = document.getElementById('theme-toggle') as HTMLButtonElement;
-  const moonIcon = document.getElementById('theme-icon-moon') as HTMLElement;
-  const sunIcon  = document.getElementById('theme-icon-sun')  as HTMLElement;
+  const icon   = document.getElementById('theme-icon')   as HTMLElement;
 
-  // Restore preference from localStorage
-  const saved = localStorage.getItem('rsa-forge-theme');
-  if (saved === 'light') {
-    applyTheme('light', toggle, moonIcon, sunIcon);
-  }
+  // Sync button state with whatever data-theme the anti-flash script set
+  const current = document.documentElement.getAttribute('data-theme') ?? 'dark';
+  applyTheme(current as 'dark' | 'light', toggle, icon);
 
   toggle.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next    = current === 'dark' ? 'light' : 'dark';
-    applyTheme(next, toggle, moonIcon, sunIcon);
-    localStorage.setItem('rsa-forge-theme', next);
+    const now  = document.documentElement.getAttribute('data-theme');
+    const next = now === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    applyTheme(next, toggle, icon);
     announce(`Switched to ${next} mode`);
   });
 }
@@ -32,17 +30,13 @@ function initTheme(): void {
 function applyTheme(
   theme: 'dark' | 'light',
   toggle: HTMLButtonElement,
-  moonIcon: HTMLElement,
-  sunIcon: HTMLElement,
+  icon: HTMLElement,
 ): void {
-  document.documentElement.setAttribute('data-theme', theme);
   if (theme === 'dark') {
-    moonIcon.style.display = '';
-    sunIcon.style.display  = 'none';
+    icon.textContent = '\u{1F319}';
     toggle.setAttribute('aria-label', 'Switch to light mode');
   } else {
-    moonIcon.style.display = 'none';
-    sunIcon.style.display  = '';
+    icon.textContent = '\u{2600}\u{FE0F}';
     toggle.setAttribute('aria-label', 'Switch to dark mode');
   }
 }

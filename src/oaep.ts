@@ -8,7 +8,7 @@
  * NIST SP 800-57 Part 1 Rev. 5 — 2048-bit minimum, 3072+ for long-term.
  */
 
-import { announce, show, hide, setText, setLoading, toBase64, truncate } from './ui.js';
+import { announce, show, setText, setLoading, toBase64, truncate } from './ui.js';
 
 interface OaepKeyPair {
   publicKey:  CryptoKey;
