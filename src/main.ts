@@ -9,6 +9,8 @@ import { initOaepPanel } from './oaep.js';
 import { initPssPanel } from './pss.js';
 import { initHastadPanel, initBleichenbacherPanel } from './attacks.js';
 import { initComparePanel } from './compare.js';
+import { initDeterminismPanel } from './determinism.js';
+import { initHybridPanel } from './hybrid.js';
 
 // Initialize once the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,4 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initHastadPanel();
   initBleichenbacherPanel();
   initComparePanel();
+  initDeterminismPanel();
+  initHybridPanel();
 });

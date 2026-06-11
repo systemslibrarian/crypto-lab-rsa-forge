@@ -86,6 +86,109 @@ export function initHastadPanel(): void {
     .addEventListener('click', hastadBroadcast);
   (document.getElementById('hastad-attack') as HTMLButtonElement)
     .addEventListener('click', hastadAttack);
+
+  // Pick-your-config challenge
+  (document.getElementById('cfg-vulnerable') as HTMLButtonElement)
+    .addEventListener('click', () => runConfigChallenge('vulnerable'));
+  (document.getElementById('cfg-safe') as HTMLButtonElement)
+    .addEventListener('click', () => runConfigChallenge('safe'));
+}
+
+/* ── Pick-your-config challenge ─────────────────────────────── */
+async function runConfigChallenge(choice: 'vulnerable' | 'safe'): Promise<void> {
+  const resultBox  = document.getElementById('cfg-result')       as HTMLElement;
+  const iconEl     = document.getElementById('cfg-result-icon')  as HTMLElement;
+  const titleEl    = document.getElementById('cfg-result-title') as HTMLElement;
+  const textEl     = document.getElementById('cfg-result-text')  as HTMLElement;
+  const message = 'Hi 3x!';
+
+  if (choice === 'vulnerable') {
+    announce('Running Håstad broadcast attack on the e=3, no-padding config you picked…');
+    try {
+      const keys: RsaKeyPair[] = [];
+      for (let i = 0; i < 3; i++) keys.push(generateRsaKeyPair(64, 3n));
+      const m = encodeMessage(message);
+      for (const k of keys) {
+        if (m >= k.n) {
+          throw new Error('message too large for demo keys — try a shorter string');
+        }
+      }
+      const c1 = modPow(m, 3n, keys[0].n);
+      const c2 = modPow(m, 3n, keys[1].n);
+      const c3 = modPow(m, 3n, keys[2].n);
+      const N  = keys[0].n * keys[1].n * keys[2].n;
+      const M3 = crt3(c1, keys[0].n, c2, keys[1].n, c3, keys[2].n);
+      const recovered = intCubeRoot(M3);
+      const valid = recovered * recovered * recovered === M3;
+      const plaintext = valid ? decodeMessage(recovered) : '(recovery failed)';
+      void N;
+
+      resultBox.className = 'result-box result-box-error';
+      iconEl.textContent  = '🔓';
+      titleEl.textContent = 'Your config got broken in milliseconds.';
+      textEl.innerHTML =
+        `Your message <code>"${message}"</code> was recovered as <code>"${plaintext}"</code> without ever touching a private key. ` +
+        `Three intercepted ciphertexts + CRT + a cube root. That's it. ` +
+        `This is the same recipe used to break early SSL implementations and naïve IoT firmware.`;
+      announceUrgent(`Vulnerable config — message recovered: "${plaintext}".`);
+    } catch (err: unknown) {
+      resultBox.className = 'result-box result-box-error';
+      iconEl.textContent  = '⚠️';
+      titleEl.textContent = 'Attack setup failed';
+      textEl.textContent  = err instanceof Error ? err.message : String(err);
+    }
+    show('cfg-result');
+    return;
+  }
+
+  // Safe path: e=65537 + OAEP. Show that the same attack mathematically fails.
+  announce('Encrypting your message under three RSA-2048-OAEP recipients and attempting Håstad…');
+  try {
+    const recipients = await Promise.all([0, 1, 2].map(() =>
+      crypto.subtle.generateKey(
+        {
+          name: 'RSA-OAEP',
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+          hash: 'SHA-256',
+        },
+        false,
+        ['encrypt', 'decrypt'],
+      ) as Promise<CryptoKeyPair>,
+    ));
+    const pt = new TextEncoder().encode(message);
+    const cts = await Promise.all(recipients.map(r =>
+      crypto.subtle.encrypt({ name: 'RSA-OAEP' }, r.publicKey, pt),
+    ));
+
+    // Try the attack: even reading the bytes of ct1, ct2, ct3 reveals nothing.
+    // Each ciphertext is a 256-byte randomized blob; XOR-ing them shows no structure.
+    const c1 = new Uint8Array(cts[0]);
+    const c2 = new Uint8Array(cts[1]);
+    const c3 = new Uint8Array(cts[2]);
+    let identical12 = c1.length === c2.length;
+    for (let i = 0; identical12 && i < c1.length; i++) if (c1[i] !== c2[i]) identical12 = false;
+    let identical13 = c1.length === c3.length;
+    for (let i = 0; identical13 && i < c1.length; i++) if (c1[i] !== c3[i]) identical13 = false;
+    const allDiffer = !identical12 && !identical13;
+
+    resultBox.className = 'result-box result-box-success';
+    iconEl.textContent  = '🛡️';
+    titleEl.textContent = 'Your config held. Attack math collapses.';
+    textEl.innerHTML =
+      `e = 65537 means c = m<sup>65537</sup> mod n; OAEP adds 32 random bytes per recipient so the three plaintexts ` +
+      `that actually get exponentiated are <em>different</em> values. CRT can't reconstruct a common m<sup>3</sup>. ` +
+      `Identical-ciphertext check across all three recipients: <strong>${allDiffer ? 'all three differ (as required)' : 'unexpected match'}</strong>. ` +
+      `This is the NIST-recommended default and what real production code should use.`;
+    announce('Safe config — Håstad cannot apply.');
+    show('cfg-result');
+  } catch (err: unknown) {
+    resultBox.className = 'result-box result-box-error';
+    iconEl.textContent  = '⚠️';
+    titleEl.textContent = 'Safe path failed unexpectedly';
+    textEl.textContent  = err instanceof Error ? err.message : String(err);
+    show('cfg-result');
+  }
 }
 
 function hastadSetup(): void {
@@ -254,12 +357,21 @@ interface BbState {
   oracle: ((c: bigint) => boolean) | null;
   running: boolean;
   abortFlag: boolean;
+  // "You are the oracle" mode
+  humanOracle: boolean;
+  humanDecisions: number;
+  humanCorrect: number;
+  pendingResolve: ((value: boolean) => void) | null;
+  pendingTrue: boolean;
 }
 
 const bb: BbState = {
   n: 0n, e: 0n, d: 0n, k: 0,
   c: 0n, targetMsg: '', oracle: null,
   running: false, abortFlag: false,
+  humanOracle: false,
+  humanDecisions: 0, humanCorrect: 0,
+  pendingResolve: null, pendingTrue: false,
 };
 
 export function initBleichenbacherPanel(): void {
@@ -268,9 +380,52 @@ export function initBleichenbacherPanel(): void {
   (document.getElementById('bb-oracle-query') as HTMLButtonElement)
     .addEventListener('click', bbManualQuery);
   (document.getElementById('bb-run') as HTMLButtonElement)
-    .addEventListener('click', bbRun);
+    .addEventListener('click', () => bbRun(false));
+  (document.getElementById('bb-run-oracle-mode') as HTMLButtonElement)
+    .addEventListener('click', () => bbRun(true));
   (document.getElementById('bb-abort') as HTMLButtonElement)
-    .addEventListener('click', () => { bb.abortFlag = true; });
+    .addEventListener('click', () => { bb.abortFlag = true; bbResumeFromHuman(false); });
+
+  // Human-oracle response buttons
+  (document.getElementById('bb-om-yes') as HTMLButtonElement)
+    .addEventListener('click', () => bbResumeFromHuman(true));
+  (document.getElementById('bb-om-no') as HTMLButtonElement)
+    .addEventListener('click', () => bbResumeFromHuman(false));
+  (document.getElementById('bb-om-autocomplete') as HTMLButtonElement)
+    .addEventListener('click', () => {
+      bb.humanOracle = false;
+      hide('bb-oracle-mode');
+      // Resume any pending query with the truthful answer so we don't desync.
+      bbResumeFromHuman(bb.pendingTrue);
+      announce('Switching to auto-complete. The machine will finish the attack.');
+    });
+}
+
+/** Resume a paused query from the human oracle with their answer. */
+function bbResumeFromHuman(answer: boolean): void {
+  if (!bb.pendingResolve) return;
+  const resolve = bb.pendingResolve;
+  bb.pendingResolve = null;
+
+  if (bb.humanOracle) {
+    bb.humanDecisions++;
+    const correct = answer === bb.pendingTrue;
+    if (correct) bb.humanCorrect++;
+    const fb = document.getElementById('bb-om-feedback') as HTMLElement;
+    if (correct) {
+      fb.className = 'oracle-mode-feedback correct';
+      fb.textContent = answer
+        ? 'Correct — those first two bytes ARE 0x00 0x02. The attack just narrowed its interval.'
+        : 'Correct — those bytes are not 0x00 0x02. The attack will try the next multiplier.';
+    } else {
+      fb.className = 'oracle-mode-feedback wrong';
+      fb.textContent = 'Wrong answer fed back to the algorithm. In real attacks the oracle is a server; one wrong answer derails the attack.';
+    }
+    setText('bb-om-decisions', String(bb.humanDecisions));
+    setText('bb-om-correct',   String(bb.humanCorrect));
+  }
+
+  resolve(answer);
 }
 
 function bbSetup(): void {
@@ -373,24 +528,44 @@ function bbManualQuery(): void {
  *  - Step 2: narrow intervals
  *  - Step 3: when |M|=1 and a=b, output the solution
  */
-async function bbRun(): Promise<void> {
+async function bbRun(humanOracle: boolean): Promise<void> {
   if (!bb.oracle || bb.n === 0n) { announce('Setup the demo first.'); return; }
   if (bb.running) return;
 
-  bb.running   = true;
-  bb.abortFlag = false;
+  bb.running     = true;
+  bb.abortFlag   = false;
+  bb.humanOracle = humanOracle;
+  bb.humanDecisions = 0;
+  bb.humanCorrect   = 0;
 
-  const runBtn   = document.getElementById('bb-run')   as HTMLButtonElement;
-  const abortBtn = document.getElementById('bb-abort') as HTMLButtonElement;
-  runBtn.disabled   = true;
-  abortBtn.disabled = false;
+  const runBtn       = document.getElementById('bb-run')              as HTMLButtonElement;
+  const runHumanBtn  = document.getElementById('bb-run-oracle-mode')  as HTMLButtonElement;
+  const abortBtn     = document.getElementById('bb-abort')            as HTMLButtonElement;
+  runBtn.disabled      = true;
+  runHumanBtn.disabled = true;
+  abortBtn.disabled    = false;
 
   show('bb-progress');
   hide('bb-recovered');
   const attackLog = document.getElementById('bb-attack-log') as HTMLElement;
   attackLog.textContent = '';
 
-  announce('Bleichenbacher attack started. Searching for conformant multiplier…');
+  // Reset byte-by-byte reveal grid
+  initByteRevealGrid(bb.k);
+
+  if (humanOracle) {
+    show('bb-oracle-mode');
+    setText('bb-om-decisions', '0');
+    setText('bb-om-correct',   '0');
+    setText('bb-om-total',     '0');
+    const fb = document.getElementById('bb-om-feedback') as HTMLElement;
+    fb.textContent = '';
+    fb.className = 'oracle-mode-feedback';
+    announce('You are now the padding oracle. Click conformant or not conformant for each query.');
+  } else {
+    hide('bb-oracle-mode');
+    announce('Bleichenbacher attack started. Searching for conformant multiplier…');
+  }
 
   const { n, e, k, oracle } = bb;
   const c = bb.c;
@@ -419,16 +594,39 @@ async function bbRun(): Promise<void> {
 
   let queryCount = 0;
 
-  /** Calls oracle, counts queries, yields periodically. */
+  /** Calls oracle, counts queries, yields periodically.
+   *  In humanOracle mode, pauses for the user's verdict on the first 2 bytes. */
   const q = async (cPrime: bigint): Promise<boolean> => {
     queryCount++;
     queries++;
-    const result = oracle(cPrime);
+    const truth = oracle(cPrime);
+
+    if (bb.humanOracle) {
+      setText('bb-om-total',  queries.toLocaleString());
+      setText('bb-query-count', queries.toLocaleString());
+      // Show the first two decrypted bytes to the human.
+      const em = bigintToBytes(modPow(cPrime, bb.d, bb.n), bb.k);
+      const b0 = em[0], b1 = em[1];
+      const b0el = document.getElementById('bb-om-b0') as HTMLElement;
+      const b1el = document.getElementById('bb-om-b1') as HTMLElement;
+      b0el.textContent = b0.toString(16).padStart(2, '0');
+      b1el.textContent = b1.toString(16).padStart(2, '0');
+      b0el.className = 'byte-shown' + (b0 === 0x00 ? ' is-zero' : '');
+      b1el.className = 'byte-shown' + (b1 === 0x02 ? ' is-two' : '');
+      bb.pendingTrue = truth;
+      // Yield to allow the UI to paint before awaiting.
+      await yieldToUI();
+      const answer = await new Promise<boolean>(resolve => {
+        bb.pendingResolve = resolve;
+      });
+      return answer;
+    }
+
     if (queryCount % YIELD_EVERY === 0) {
       updateStats(queries, iterations, B2, B3, [[B2, B3 - 1n]]); // placeholder
       await yieldToUI();
     }
-    return result;
+    return truth;
   };
 
   const updateStats = (
@@ -452,6 +650,10 @@ async function bbRun(): Promise<void> {
       const bar = document.getElementById('bb-interval-bar') as HTMLElement;
       bar.style.left  = `${Math.max(0, Math.min(99, left))}%`;
       bar.style.width = `${Math.max(0.3, Math.min(100 - left, width))}%`;
+
+      // Byte-by-byte reveal: any leading bytes where bytes(a)[i] == bytes(b)[i]
+      // are uniquely determined.
+      updateByteReveal(a, b, bb.k);
     }
   };
 
@@ -540,7 +742,7 @@ async function bbRun(): Promise<void> {
       } else {
         /* Step 2c: Use tighter bounds to find r and s */
         const [a, b] = intervals[0];
-        let r = ceilDiv(2n * (b * s - B2), n);
+        let r = 2n * ceilDiv(b * s - B2, n);
         let found = false;
 
         while (!found) {
@@ -571,9 +773,60 @@ async function bbRun(): Promise<void> {
       }
     }
   } finally {
-    bb.running        = false;
-    runBtn.disabled   = false;
-    abortBtn.disabled = true;
+    bb.running           = false;
+    bb.humanOracle       = false;
+    bb.pendingResolve    = null;
+    runBtn.disabled      = false;
+    runHumanBtn.disabled = false;
+    abortBtn.disabled    = true;
+  }
+}
+
+/* ── Byte-by-byte reveal helpers ────────────────────────────── */
+function initByteRevealGrid(k: number): void {
+  const row = document.getElementById('bb-byte-row');
+  if (!row) return;
+  row.textContent = '';
+  for (let i = 0; i < k; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'byte-cell';
+    cell.id = `bb-byte-${i}`;
+    const hex = document.createElement('span');
+    hex.className = 'byte-cell-hex';
+    hex.textContent = '??';
+    const ascii = document.createElement('span');
+    ascii.className = 'byte-cell-ascii';
+    ascii.textContent = '·';
+    cell.append(hex, ascii);
+    row.appendChild(cell);
+  }
+}
+
+function updateByteReveal(a: bigint, b: bigint, k: number): void {
+  const aBytes = bigintToBytes(a, k);
+  const bBytes = bigintToBytes(b, k);
+  for (let i = 0; i < k; i++) {
+    const cell = document.getElementById(`bb-byte-${i}`);
+    if (!cell) continue;
+    const hex = cell.querySelector('.byte-cell-hex')   as HTMLElement;
+    const asc = cell.querySelector('.byte-cell-ascii') as HTMLElement;
+
+    // Byte is known if a[0..i] == b[0..i] (all preceding bytes agree).
+    let known = true;
+    for (let j = 0; j <= i; j++) {
+      if (aBytes[j] !== bBytes[j]) { known = false; break; }
+    }
+    if (known) {
+      const byte = aBytes[i];
+      const newHex = byte.toString(16).padStart(2, '0');
+      const newAsc = byte >= 0x20 && byte < 0x7f ? String.fromCharCode(byte) : '·';
+      if (!cell.classList.contains('known')) {
+        cell.classList.add('known', 'just-revealed');
+        setTimeout(() => cell.classList.remove('just-revealed'), 700);
+      }
+      hex.textContent = newHex;
+      asc.textContent = newAsc;
+    }
   }
 }
 

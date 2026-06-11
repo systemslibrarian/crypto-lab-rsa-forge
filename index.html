@@ -246,6 +246,45 @@
         </div>
       </div>
 
+      <!-- Side-by-side determinism contrast -->
+      <div class="card">
+        <h3 class="card-title">Side-by-Side — Textbook vs OAEP, Same Plaintext, Twice Each</h3>
+        <p class="card-description">
+          Encrypt the same plaintext twice with textbook RSA and twice with RSA-OAEP. Compare byte-by-byte.
+          Textbook collides on every byte (deterministic). OAEP differs on every byte (randomized).
+          This is the single picture that makes "use OAEP" non-negotiable.
+        </p>
+        <div class="button-group">
+          <button id="det-run" class="btn btn-primary" aria-label="Run side-by-side determinism contrast between textbook RSA and RSA-OAEP">
+            Run Side-by-Side Contrast
+          </button>
+        </div>
+        <div class="det-contrast-grid" id="det-contrast-grid" hidden aria-live="polite">
+          <div class="det-contrast-col broken">
+            <div class="det-contrast-title">
+              <span aria-hidden="true">⚠️</span>
+              Textbook RSA — same input, same output
+            </div>
+            <div class="step-desc" style="margin-bottom: 0.5rem;">Ciphertext 1 (low bytes):</div>
+            <div class="det-bytes-row" id="det-tb-ct1" aria-label="Textbook ciphertext 1 bytes"></div>
+            <div class="step-desc" style="margin-bottom: 0.5rem;">Ciphertext 2 (low bytes):</div>
+            <div class="det-bytes-row" id="det-tb-ct2" aria-label="Textbook ciphertext 2 bytes"></div>
+            <div class="det-summary" id="det-tb-summary">—</div>
+          </div>
+          <div class="det-contrast-col fixed">
+            <div class="det-contrast-title">
+              <span aria-hidden="true">✓</span>
+              RSA-OAEP — same input, different output
+            </div>
+            <div class="step-desc" style="margin-bottom: 0.5rem;">Ciphertext 1 (low bytes):</div>
+            <div class="det-bytes-row" id="det-oaep-ct1" aria-label="OAEP ciphertext 1 bytes"></div>
+            <div class="step-desc" style="margin-bottom: 0.5rem;">Ciphertext 2 (low bytes):</div>
+            <div class="det-bytes-row" id="det-oaep-ct2" aria-label="OAEP ciphertext 2 bytes"></div>
+            <div class="det-summary" id="det-oaep-summary">—</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Explanation -->
       <div class="card">
         <h3 class="card-title">Why Textbook RSA Is Broken</h3>
@@ -407,31 +446,38 @@
           OAEP encodes the message using two MGF1 mask operations with a random seed, 
           providing non-determinism and all-or-nothing decoding.
         </p>
-        <div class="oaep-diagram" aria-label="OAEP padding structure diagram">
+        <p class="card-description" style="font-style: italic; color: var(--c-text-faint);">
+          After you run an OAEP encryption above, hover any colored segment to see the actual bytes from that operation.
+        </p>
+        <div class="oaep-diagram" aria-label="OAEP padding structure diagram" style="position: relative;">
           <div style="margin-bottom: 1rem;">
             <div class="oaep-label">Encoded Message Block (EM = 0x00 ‖ maskedSeed ‖ maskedDB):</div>
             <div class="oaep-block" role="img" aria-label="OAEP encoded message showing: one byte zero, masked seed (hLen bytes), and masked data block">
-              <div class="oaep-block-segment color-gray" style="flex: 0.3; min-width: 28px;" title="0x00 byte">0x00</div>
-              <div class="oaep-block-segment color-sky" style="flex: 1;" title="maskedSeed (32 bytes for SHA-256)">maskedSeed (hLen)</div>
-              <div class="oaep-block-segment color-teal" style="flex: 3;" title="maskedDB = lHash ‖ PS ‖ 0x01 ‖ M, all XOR'd with dbMask">maskedDB (k − hLen − 1 bytes)</div>
+              <div class="oaep-block-segment color-gray hoverable" data-oaep-field="leading" style="flex: 0.3; min-width: 28px;" title="0x00 byte">0x00</div>
+              <div class="oaep-block-segment color-sky hoverable" data-oaep-field="maskedSeed" style="flex: 1;" title="maskedSeed (32 bytes for SHA-256)">maskedSeed (hLen)</div>
+              <div class="oaep-block-segment color-teal hoverable" data-oaep-field="maskedDB" style="flex: 3;" title="maskedDB = lHash ‖ PS ‖ 0x01 ‖ M, all XOR'd with dbMask">maskedDB (k − hLen − 1 bytes)</div>
             </div>
           </div>
           <div style="margin-bottom: 1rem;">
             <div class="oaep-label">Data Block (DB) before masking:</div>
             <div class="oaep-block" role="img" aria-label="OAEP data block showing: label hash, padding string of zeros, separator byte 0x01, and message">
-              <div class="oaep-block-segment color-purple" style="flex: 1;" title="Hash of optional label (all-zero for empty label)">lHash (hLen)</div>
-              <div class="oaep-block-segment color-gray" style="flex: 1.5;" title="Padding string of zero bytes">PS (zeros)</div>
-              <div class="oaep-block-segment color-yellow" style="flex: 0.4; min-width: 28px;" title="Separator 0x01">0x01</div>
-              <div class="oaep-block-segment color-green" style="flex: 1.5;" title="The actual message">M</div>
+              <div class="oaep-block-segment color-purple hoverable" data-oaep-field="lHash" style="flex: 1;" title="Hash of optional label (all-zero for empty label)">lHash (hLen)</div>
+              <div class="oaep-block-segment color-gray hoverable" data-oaep-field="ps" style="flex: 1.5;" title="Padding string of zero bytes">PS (zeros)</div>
+              <div class="oaep-block-segment color-yellow hoverable" data-oaep-field="separator" style="flex: 0.4; min-width: 28px;" title="Separator 0x01">0x01</div>
+              <div class="oaep-block-segment color-green hoverable" data-oaep-field="M" style="flex: 1.5;" title="The actual message">M</div>
             </div>
           </div>
           <div>
             <div class="oaep-label">Seed and mask operations:</div>
             <div class="oaep-block" role="img" aria-label="OAEP seed showing random seed and MGF operations">
-              <div class="oaep-block-segment color-blue" style="flex: 1.5;" title="Random seed (hLen random bytes)">seed (hLen random bytes)</div>
-              <div class="oaep-block-segment color-orange" style="flex: 2;" title="dbMask = MGF1(seed, k−hLen−1)">dbMask = MGF1(seed, k−hLen−1)</div>
-              <div class="oaep-block-segment color-pink" style="flex: 1.5;" title="seedMask = MGF1(maskedDB, hLen)">seedMask = MGF1(maskedDB, hLen)</div>
+              <div class="oaep-block-segment color-blue hoverable" data-oaep-field="seed" style="flex: 1.5;" title="Random seed (hLen random bytes)">seed (hLen random bytes)</div>
+              <div class="oaep-block-segment color-orange hoverable" data-oaep-field="dbMask" style="flex: 2;" title="dbMask = MGF1(seed, k−hLen−1)">dbMask = MGF1(seed, k−hLen−1)</div>
+              <div class="oaep-block-segment color-pink hoverable" data-oaep-field="seedMask" style="flex: 1.5;" title="seedMask = MGF1(maskedDB, hLen)">seedMask = MGF1(maskedDB, hLen)</div>
             </div>
+          </div>
+          <div class="diagram-tooltip" id="oaep-tooltip" role="tooltip">
+            <div class="diagram-tooltip-label" id="oaep-tooltip-label"></div>
+            <div class="diagram-tooltip-bytes" id="oaep-tooltip-bytes"></div>
           </div>
         </div>
         <div class="citation" aria-label="Specification reference" style="margin-top: 1rem;">
@@ -539,36 +585,43 @@
           PSS encodes the message hash with a random salt. The salt makes signatures non-deterministic 
           and provides tight security reduction.
         </p>
-        <div class="pss-structure" aria-label="PSS padding structure visualization">
+        <p class="card-description" style="font-style: italic; color: var(--c-text-faint);">
+          After you sign a message above, hover any colored segment to see the actual bytes from that signature.
+        </p>
+        <div class="pss-structure" aria-label="PSS padding structure visualization" style="position: relative;">
           <div class="pss-row">
             <div class="pss-label">M (virtual)</div>
             <div class="pss-blocks" role="img" aria-label="PSS virtual message: 8 zero bytes, message hash, salt">
-              <div class="pss-block-segment color-gray" style="flex: 0.8;" title="8 zero bytes">0x00×8</div>
-              <div class="pss-block-segment color-blue" style="flex: 2;" title="mHash = Hash(M)">mHash</div>
-              <div class="pss-block-segment color-green" style="flex: 1.5;" title="random salt (sLen bytes)">salt (sLen)</div>
+              <div class="pss-block-segment color-gray hoverable" data-pss-field="zeros8" style="flex: 0.8;" title="8 zero bytes">0x00×8</div>
+              <div class="pss-block-segment color-blue hoverable" data-pss-field="mHash" style="flex: 2;" title="mHash = Hash(M)">mHash</div>
+              <div class="pss-block-segment color-green hoverable" data-pss-field="salt" style="flex: 1.5;" title="random salt (sLen bytes)">salt (sLen)</div>
             </div>
           </div>
           <div class="pss-row">
             <div class="pss-label">H</div>
             <div class="pss-blocks" role="img" aria-label="PSS hash H = Hash of virtual message M-prime">
-              <div class="pss-block-segment color-purple" style="flex: 1;" title="H = Hash(0x00×8 ‖ mHash ‖ salt)">H = Hash(M′)</div>
+              <div class="pss-block-segment color-purple hoverable" data-pss-field="H" style="flex: 1;" title="H = Hash(0x00×8 ‖ mHash ‖ salt)">H = Hash(M′)</div>
             </div>
           </div>
           <div class="pss-row">
             <div class="pss-label">DB</div>
             <div class="pss-blocks" role="img" aria-label="PSS data block: padding zeros, separator 0x01, salt">
-              <div class="pss-block-segment color-gray" style="flex: 2;" title="Padding string of zero bytes">PS (zeros)</div>
-              <div class="pss-block-segment color-yellow" style="flex: 0.4; min-width: 28px;" title="Separator 0x01">0x01</div>
-              <div class="pss-block-segment color-green" style="flex: 1.5;" title="salt">salt</div>
+              <div class="pss-block-segment color-gray hoverable" data-pss-field="ps" style="flex: 2;" title="Padding string of zero bytes">PS (zeros)</div>
+              <div class="pss-block-segment color-yellow hoverable" data-pss-field="separator" style="flex: 0.4; min-width: 28px;" title="Separator 0x01">0x01</div>
+              <div class="pss-block-segment color-green hoverable" data-pss-field="saltDB" style="flex: 1.5;" title="salt">salt</div>
             </div>
           </div>
           <div class="pss-row">
             <div class="pss-label">EM (encoded)</div>
             <div class="pss-blocks" role="img" aria-label="PSS encoded message: masked DB, H, and trailer 0xBC">
-              <div class="pss-block-segment color-teal" style="flex: 3;" title="maskedDB = DB XOR MGF1(H, emLen−hLen−1)">maskedDB</div>
-              <div class="pss-block-segment color-purple" style="flex: 1;" title="H">H</div>
-              <div class="pss-block-segment color-orange" style="flex: 0.4; min-width: 36px;" title="0xBC trailer byte">0xBC</div>
+              <div class="pss-block-segment color-teal hoverable" data-pss-field="maskedDB" style="flex: 3;" title="maskedDB = DB XOR MGF1(H, emLen−hLen−1)">maskedDB</div>
+              <div class="pss-block-segment color-purple hoverable" data-pss-field="H2" style="flex: 1;" title="H">H</div>
+              <div class="pss-block-segment color-orange hoverable" data-pss-field="trailer" style="flex: 0.4; min-width: 36px;" title="0xBC trailer byte">0xBC</div>
             </div>
+          </div>
+          <div class="diagram-tooltip" id="pss-tooltip" role="tooltip">
+            <div class="diagram-tooltip-label" id="pss-tooltip-label"></div>
+            <div class="diagram-tooltip-bytes" id="pss-tooltip-bytes"></div>
           </div>
         </div>
         <div class="citation" style="margin-top: 1rem;" aria-label="Specification reference">
@@ -651,9 +704,41 @@
         </div>
       </div>
 
+      <!-- Pick your config (gamified challenge) -->
+      <div class="card">
+        <h3 class="card-title">Pick Your Config — Will Your Message Survive?</h3>
+        <p class="card-description">
+          You're sending a short message to three recipients. You get to pick how it's encrypted.
+          Click a configuration and the demo runs the broadcast and the attack on <em>your</em> choice.
+        </p>
+        <div class="config-picker">
+          <button id="cfg-vulnerable" class="config-card" aria-label="Pick vulnerable configuration: e=3, no padding">
+            <div class="config-card-title">"Faster boot, simpler code"</div>
+            <div class="config-card-config">e = 3 · padding = none (textbook)</div>
+            <div class="step-desc">
+              The classic small-exponent footgun. Used in early SSL implementations and IoT firmware to save cycles.
+            </div>
+            <div class="config-card-outcome vulnerable">→ Run attack on this config</div>
+          </button>
+          <button id="cfg-safe" class="config-card" aria-label="Pick safe configuration: e=65537, OAEP padding">
+            <div class="config-card-title">"NIST-recommended defaults"</div>
+            <div class="config-card-config">e = 65537 · padding = OAEP-SHA256</div>
+            <div class="step-desc">
+              Fermat-4 public exponent and randomized OAEP. Both keys break Håstad — the math doesn't compose.
+            </div>
+            <div class="config-card-outcome safe">→ Run attack on this config</div>
+          </button>
+        </div>
+        <div id="cfg-result" class="result-box" style="margin-top: 1.5rem;" hidden aria-live="assertive">
+          <div class="result-box-icon" id="cfg-result-icon" aria-hidden="true">—</div>
+          <div class="result-box-title" id="cfg-result-title">—</div>
+          <div class="result-box-text" id="cfg-result-text">—</div>
+        </div>
+      </div>
+
       <!-- Setup -->
       <div class="card">
-        <h3 class="card-title">Setup — Three Recipients, e=3</h3>
+        <h3 class="card-title">Setup — Three Recipients, e=3 (Manual)</h3>
         <p class="card-description">
           Generate three independent RSA keys each with e=3 and distinct small moduli. 
           These represent three servers all using textbook RSA with a small public exponent.
@@ -770,6 +855,52 @@
             <div class="result-box-icon" aria-hidden="true">🔓</div>
             <div class="result-box-title">Message Recovered Without Private Key</div>
             <div class="result-box-text" id="hastad-recovered-text">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-world CVE receipts -->
+      <div class="card">
+        <h3 class="card-title">Real-World Receipts — Small-Exponent / Coppersmith Failures</h3>
+        <p class="card-description">
+          Low-exponent and broadcast attacks aren't just academic. Each row below shipped in production code.
+        </p>
+        <div class="cve-strip">
+          <div class="cve-card">
+            <div>
+              <span class="cve-card-id">CVE-2017-15361</span>
+              <span class="cve-card-year">2017</span>
+            </div>
+            <div class="cve-card-title">ROCA — Infineon TPM RSA</div>
+            <div class="cve-card-text">
+              Coppersmith's attack on weak Infineon-generated RSA keys recovered private keys from public keys.
+              Affected Estonian national ID cards, Yubikey 4, BitLocker TPMs.
+            </div>
+            <div class="cve-card-vendors">Infineon · Estonia ID · Yubikey · TPM-backed BitLocker</div>
+          </div>
+          <div class="cve-card">
+            <div>
+              <span class="cve-card-id">CVE-2012-4929</span>
+              <span class="cve-card-year">2012</span>
+            </div>
+            <div class="cve-card-title">Debian weak RSA keys</div>
+            <div class="cve-card-text">
+              OpenSSL PRNG bug on Debian/Ubuntu (2006-2008) produced predictable RSA primes.
+              GCD across many public keys factored thousands of "secure" SSH/TLS keys.
+            </div>
+            <div class="cve-card-vendors">OpenSSL · Debian · Ubuntu · countless SSH hosts</div>
+          </div>
+          <div class="cve-card">
+            <div>
+              <span class="cve-card-id">Heninger et al.</span>
+              <span class="cve-card-year">2012</span>
+            </div>
+            <div class="cve-card-title">"Mining Your Ps and Qs"</div>
+            <div class="cve-card-text">
+              USENIX Security scan factored 0.5% of TLS and 1% of SSH public keys by computing GCDs of
+              shared prime factors — a direct cousin of small-exponent/CRT recovery.
+            </div>
+            <div class="cve-card-vendors">TLS · SSH · embedded routers · printers</div>
           </div>
         </div>
       </div>
@@ -912,11 +1043,45 @@
         </p>
         <div class="button-group">
           <button id="bb-run" class="btn btn-danger" aria-label="Run Bleichenbacher adaptive chosen-ciphertext attack">
-            Run Attack
+            Run Attack (Auto)
+          </button>
+          <button id="bb-run-oracle-mode" class="btn btn-secondary" aria-label="Run attack while you act as the padding oracle">
+            You Are the Oracle (step through)
           </button>
           <button id="bb-abort" class="btn btn-ghost" disabled aria-label="Abort the running attack">
             Abort
           </button>
+        </div>
+
+        <!-- You-are-the-oracle interactive panel -->
+        <div class="oracle-mode-card" id="bb-oracle-mode" hidden>
+          <div class="oracle-mode-prompt">
+            <strong>You are the oracle.</strong> A ciphertext was just decrypted.
+            Here are the first two bytes of the result. Is the padding conformant?
+            Conformant means: <code>EM[0] == 0x00</code> <strong>AND</strong> <code>EM[1] == 0x02</code>.
+          </div>
+          <div class="oracle-mode-bytes" aria-label="First two decrypted bytes shown to the human oracle">
+            <span class="byte-shown" id="bb-om-b0">??</span>
+            <span class="byte-shown" id="bb-om-b1">??</span>
+            <span style="color: var(--c-text-faint); font-size: 0.875rem;">… (rest hidden)</span>
+          </div>
+          <div class="oracle-mode-buttons">
+            <button id="bb-om-yes" class="btn btn-primary" aria-label="Answer conformant for this query">
+              ✓ CONFORMANT
+            </button>
+            <button id="bb-om-no" class="btn btn-ghost" aria-label="Answer not conformant for this query">
+              ✗ NOT CONFORMANT
+            </button>
+            <button id="bb-om-autocomplete" class="btn btn-danger" aria-label="Stop being the oracle and let the attack auto-complete">
+              Let the machine finish
+            </button>
+          </div>
+          <div class="oracle-mode-stats" aria-live="polite">
+            <span>Your decisions: <span id="bb-om-decisions">0</span></span>
+            <span>Correct: <span id="bb-om-correct">0</span></span>
+            <span>Total queries: <span id="bb-om-total">0</span></span>
+          </div>
+          <div class="oracle-mode-feedback" id="bb-om-feedback" aria-live="polite"></div>
         </div>
 
         <div id="bb-progress" style="margin-top: 1.5rem;" hidden aria-live="polite">
@@ -948,7 +1113,20 @@
             </div>
           </div>
 
-          <div id="bb-attack-log" class="oracle-query-log" style="max-height: 160px;" aria-label="Attack progress log" aria-live="off"></div>
+          <!-- Byte-by-byte plaintext reveal -->
+          <div class="byte-reveal-container">
+            <div class="byte-reveal-label">
+              Plaintext recovery — bytes that are uniquely determined by the current interval [a, b]
+            </div>
+            <div class="byte-row" id="bb-byte-row" aria-live="polite" aria-label="Recovered plaintext bytes"></div>
+            <div class="step-desc" style="margin-top: 0.5rem;">
+              Each cell shows one byte of the unknown plaintext. A byte becomes <strong style="color: var(--c-safe);">known</strong>
+              when the high-byte of <code>a</code> and <code>b</code> agree at that position. Watch them light up as
+              the interval shrinks — by the time you see "Hi!" the attack is over.
+            </div>
+          </div>
+
+          <div id="bb-attack-log" class="oracle-query-log" style="max-height: 160px; margin-top: 1rem;" aria-label="Attack progress log" aria-live="off"></div>
         </div>
 
         <div id="bb-recovered" class="result-box result-box-error" style="margin-top: 1rem;" hidden aria-live="assertive">
@@ -956,6 +1134,53 @@
           <div class="result-box-title">Plaintext Recovered</div>
           <div class="result-box-text" id="bb-recovered-text">—</div>
           <div class="crypto-value" id="bb-recovered-hex" style="margin-top: 0.75rem;" aria-label="Recovered plaintext in hexadecimal"></div>
+        </div>
+      </div>
+
+      <!-- Real-world CVE receipts -->
+      <div class="card">
+        <h3 class="card-title">Real-World Receipts — Bleichenbacher in Production</h3>
+        <p class="card-description">
+          The "million message attack" was first published in 1998. Variants have shipped in production
+          TLS stacks every few years since. The countermeasures are hard.
+        </p>
+        <div class="cve-strip">
+          <div class="cve-card">
+            <div>
+              <span class="cve-card-id">CVE-2017-13099</span>
+              <span class="cve-card-year">2017</span>
+            </div>
+            <div class="cve-card-title">ROBOT — Return of Bleichenbacher</div>
+            <div class="cve-card-text">
+              Böck, Somorovsky, Young (USENIX 2018) found 8 major vendors still vulnerable 19 years after the
+              original paper. Affected Facebook, PayPal, and many TLS terminators.
+            </div>
+            <div class="cve-card-vendors">F5 BIG-IP · Citrix · Cisco · Radware · Bouncy Castle · Erlang/OTP</div>
+          </div>
+          <div class="cve-card">
+            <div>
+              <span class="cve-card-id">CVE-2016-0800</span>
+              <span class="cve-card-year">2016</span>
+            </div>
+            <div class="cve-card-title">DROWN — cross-protocol Bleichenbacher</div>
+            <div class="cve-card-text">
+              SSLv2 oracle decrypted modern TLS sessions that shared an RSA key. 33% of all HTTPS servers were
+              vulnerable at disclosure time.
+            </div>
+            <div class="cve-card-vendors">OpenSSL · Apache · NGINX · Postfix · ~11.5M HTTPS hosts</div>
+          </div>
+          <div class="cve-card">
+            <div>
+              <span class="cve-card-id">CVE-2018-12404</span>
+              <span class="cve-card-year">2018</span>
+            </div>
+            <div class="cve-card-title">CAT — Cache-like Timing</div>
+            <div class="cve-card-text">
+              Microarchitectural side channel reintroduced the Bleichenbacher oracle in NSS via cache-timing
+              differences during PKCS#1 v1.5 decoding, even though the explicit error was gone.
+            </div>
+            <div class="cve-card-vendors">Mozilla NSS · Firefox · Thunderbird</div>
+          </div>
         </div>
       </div>
 
@@ -1108,6 +1333,48 @@
           Bar lengths scaled to ML-KEM-768 (1184 B) = 100%.
           RSA-4096 has the same bar width as ML-KEM-768 but provides no post-quantum security.
         </p>
+      </div>
+
+      <!-- Hybrid crypto timing demo -->
+      <div class="card">
+        <h3 class="card-title">Why TLS Doesn't Encrypt the Body With RSA — Live Timing</h3>
+        <p class="card-description">
+          RSA-OAEP can only encrypt a few bytes per operation. To send a 1 MB payload you'd have to chunk it
+          into thousands of RSA ops. Press the button to time three approaches on 1 MB of random data —
+          your numbers, your browser, right now.
+        </p>
+        <div class="button-group">
+          <button id="hybrid-run" class="btn btn-primary" aria-label="Run hybrid encryption timing benchmark on 1 megabyte of data">
+            Encrypt 1 MB — RSA-only vs AES vs Hybrid
+          </button>
+        </div>
+        <div class="hybrid-grid" id="hybrid-results" hidden aria-live="polite">
+          <div class="hybrid-card broken" id="hybrid-rsa">
+            <div class="hybrid-card-title">RSA-OAEP-2048 only</div>
+            <div class="hybrid-card-config">chunked 190 B at a time</div>
+            <div><span class="hybrid-card-time" id="hybrid-rsa-time">—</span> <span class="hybrid-card-unit">ms (projected)</span></div>
+            <div class="hybrid-card-note" id="hybrid-rsa-note">—</div>
+          </div>
+          <div class="hybrid-card" id="hybrid-aes">
+            <div class="hybrid-card-title">AES-256-GCM only</div>
+            <div class="hybrid-card-config">single key, streaming</div>
+            <div><span class="hybrid-card-time" id="hybrid-aes-time">—</span> <span class="hybrid-card-unit">ms (measured)</span></div>
+            <div class="hybrid-card-note" id="hybrid-aes-note">—</div>
+          </div>
+          <div class="hybrid-card hybrid" id="hybrid-hybrid">
+            <div class="hybrid-card-title">Hybrid (what TLS does)</div>
+            <div class="hybrid-card-config">RSA-OAEP wraps AES key, AES-GCM bulk</div>
+            <div><span class="hybrid-card-time" id="hybrid-hybrid-time">—</span> <span class="hybrid-card-unit">ms (measured)</span></div>
+            <div class="hybrid-card-note" id="hybrid-hybrid-note">—</div>
+          </div>
+        </div>
+        <div id="hybrid-takeaway" class="alert alert-success" role="note" hidden style="margin-top: 1rem;">
+          <span class="alert-icon" aria-hidden="true">💡</span>
+          <div class="alert-content">
+            <div class="alert-title">This is why hybrid encryption exists</div>
+            <div class="alert-text" id="hybrid-takeaway-text">—</div>
+          </div>
+        </div>
       </div>
 
       <!-- Shor's algorithm explanation -->

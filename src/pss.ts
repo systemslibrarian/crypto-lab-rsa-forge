@@ -6,7 +6,8 @@
  * Specified in RFC 8017 (PKCS#1 v2.2) §8.1, §9.1.
  */
 
-import { announce, show, setText, setLoading, toBase64 } from './ui.js';
+import { announce, show, setText, setLoading, toBase64, toHex } from './ui.js';
+import { pssEncode, type PssFields } from './pss-encode.js';
 
 interface PssKeyPair {
   publicKey:  CryptoKey;
@@ -16,6 +17,7 @@ interface PssKeyPair {
 let pssKey: PssKeyPair | null = null;
 let pssSignature: ArrayBuffer | null = null;
 let pssOriginalMessage = '';
+let lastPssFields: PssFields | null = null;
 
 export function initPssPanel(): void {
   (document.getElementById('pss-gen') as HTMLButtonElement)
@@ -26,6 +28,95 @@ export function initPssPanel(): void {
     .addEventListener('click', () => verifyMessage(false));
   (document.getElementById('pss-verify-tampered') as HTMLButtonElement)
     .addEventListener('click', () => verifyMessage(true));
+
+  initPssDiagramHover();
+}
+
+/* ── Diagram hover with real bytes ─────────────────────────── */
+const PSS_FIELD_LABELS: Record<string, string> = {
+  zeros8:    '8 leading zero bytes (RFC 8017 §9.1.1 step 4)',
+  mHash:     'mHash = SHA-256(your message)',
+  salt:      'salt — sLen random bytes (fresh each signature)',
+  H:         'H = SHA-256(0×8 ‖ mHash ‖ salt)',
+  ps:        'PS — zero padding string in DB',
+  separator: '0x01 separator byte in DB',
+  saltDB:    'salt copy used inside DB',
+  maskedDB:  'maskedDB = DB XOR MGF1(H, emLen−hLen−1)',
+  H2:        'H — same digest, embedded in EM',
+  trailer:   '0xBC trailer byte (RFC 8017 §9.1.1 step 12)',
+};
+
+function pssFieldBytes(f: PssFields, name: string): Uint8Array | null {
+  switch (name) {
+    case 'zeros8':    return f.zeros8;
+    case 'mHash':     return f.mHash;
+    case 'salt':      return f.salt;
+    case 'H':         return f.H;
+    case 'ps':        return f.ps;
+    case 'separator': return f.separator;
+    case 'saltDB':    return f.saltDB;
+    case 'maskedDB':  return f.maskedDB;
+    case 'H2':        return f.H;
+    case 'trailer':   return f.trailer;
+    default:          return null;
+  }
+}
+
+function pssFormatHex(bytes: Uint8Array, max = 64): string {
+  if (bytes.length === 0) return '(empty)';
+  const shown = bytes.subarray(0, max);
+  const groups: string[] = [];
+  for (let i = 0; i < shown.length; i += 4) {
+    groups.push(toHex(shown.subarray(i, i + 4)));
+  }
+  let out = groups.join(' ');
+  if (bytes.length > max) out += `  …(+${bytes.length - max} more bytes)`;
+  return out;
+}
+
+function initPssDiagramHover(): void {
+  const tooltip = document.getElementById('pss-tooltip') as HTMLElement | null;
+  if (!tooltip) return;
+  const labelEl = document.getElementById('pss-tooltip-label') as HTMLElement;
+  const bytesEl = document.getElementById('pss-tooltip-bytes') as HTMLElement;
+  const segments = document.querySelectorAll<HTMLElement>('[data-pss-field]');
+
+  const positionTooltip = (target: HTMLElement) => {
+    const parent = tooltip.parentElement!;
+    const parentRect = parent.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const left = targetRect.left - parentRect.left;
+    const top  = targetRect.bottom - parentRect.top + 6;
+    tooltip.style.left = `${Math.max(8, Math.min(left, parent.clientWidth - 360))}px`;
+    tooltip.style.top  = `${top}px`;
+  };
+
+  const showTip = (target: HTMLElement) => {
+    const field = target.dataset.pssField!;
+    labelEl.textContent = PSS_FIELD_LABELS[field] ?? field;
+    if (!lastPssFields) {
+      bytesEl.innerHTML = '<span class="diagram-tooltip-empty">Sign a message above to see real bytes here.</span>';
+    } else {
+      const bytes = pssFieldBytes(lastPssFields, field);
+      if (!bytes) {
+        bytesEl.textContent = '(no data)';
+      } else {
+        bytesEl.textContent = `${bytes.length} bytes:  ${pssFormatHex(bytes)}`;
+      }
+    }
+    positionTooltip(target);
+    tooltip.classList.add('visible');
+  };
+
+  const hideTip = () => tooltip.classList.remove('visible');
+
+  segments.forEach(seg => {
+    seg.addEventListener('mouseenter', () => showTip(seg));
+    seg.addEventListener('mouseleave', hideTip);
+    seg.addEventListener('focus',      () => showTip(seg));
+    seg.addEventListener('blur',       hideTip);
+    seg.tabIndex = 0;
+  });
 }
 
 /* ── Key Generation ─────────────────────────────────────────── */
@@ -92,6 +183,10 @@ async function signMessage(): Promise<void> {
 
     pssSignature      = sig;
     pssOriginalMessage = msg;
+
+    // Compute PSS-encoded intermediate fields (independent random salt)
+    // so the diagram hover can show real bytes for this message.
+    try { lastPssFields = await pssEncode(msgBytes); } catch { lastPssFields = null; }
 
     const b64 = toBase64(new Uint8Array(sig));
     setText('pss-signature', b64);

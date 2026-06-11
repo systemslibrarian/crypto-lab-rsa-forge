@@ -8,7 +8,8 @@
  * NIST SP 800-57 Part 1 Rev. 5 — 2048-bit minimum, 3072+ for long-term.
  */
 
-import { announce, show, setText, setLoading, toBase64, truncate } from './ui.js';
+import { announce, show, setText, setLoading, toBase64, toHex, truncate } from './ui.js';
+import { oaepEncode, type OaepFields } from './oaep-encode.js';
 
 interface OaepKeyPair {
   publicKey:  CryptoKey;
@@ -19,6 +20,7 @@ interface OaepKeyPair {
 const oaepKeys: Record<number, OaepKeyPair | null> = { 2048: null, 4096: null };
 let lastCiphertext: ArrayBuffer | null = null;
 let lastCiphertextBits = 0;
+let lastOaepFields: OaepFields | null = null;
 
 export function initOaepPanel(): void {
   (document.getElementById('oaep-gen-2048') as HTMLButtonElement)
@@ -38,6 +40,95 @@ export function initOaepPanel(): void {
 
   (document.getElementById('oaep-randomize') as HTMLButtonElement)
     .addEventListener('click', demonstrateRandomization);
+
+  initOaepDiagramHover();
+}
+
+/* ── Diagram hover with real bytes ─────────────────────────── */
+const OAEP_FIELD_LABELS: Record<string, string> = {
+  leading:    '0x00 leading byte',
+  maskedSeed: 'maskedSeed = seed XOR seedMask',
+  maskedDB:   'maskedDB = DB XOR dbMask',
+  lHash:      'lHash = SHA-256("")',
+  ps:         'PS — zero padding string',
+  separator:  '0x01 separator byte',
+  M:          'M — your plaintext bytes',
+  seed:       'seed — random hLen bytes',
+  dbMask:     'dbMask = MGF1(seed, k − hLen − 1)',
+  seedMask:   'seedMask = MGF1(maskedDB, hLen)',
+};
+
+function fieldBytes(fields: OaepFields, name: string): Uint8Array | null {
+  switch (name) {
+    case 'leading':    return new Uint8Array([0x00]);
+    case 'maskedSeed': return fields.maskedSeed;
+    case 'maskedDB':   return fields.maskedDB;
+    case 'lHash':      return fields.lHash;
+    case 'ps':         return fields.ps;
+    case 'separator':  return fields.separator;
+    case 'M':          return fields.M;
+    case 'seed':       return fields.seed;
+    case 'dbMask':     return fields.dbMask;
+    case 'seedMask':   return fields.seedMask;
+    default:           return null;
+  }
+}
+
+function formatHexGrouped(bytes: Uint8Array, max = 64): string {
+  if (bytes.length === 0) return '(empty)';
+  const shown = bytes.subarray(0, max);
+  const groups: string[] = [];
+  for (let i = 0; i < shown.length; i += 4) {
+    groups.push(toHex(shown.subarray(i, i + 4)));
+  }
+  let out = groups.join(' ');
+  if (bytes.length > max) out += `  …(+${bytes.length - max} more bytes)`;
+  return out;
+}
+
+function initOaepDiagramHover(): void {
+  const tooltip = document.getElementById('oaep-tooltip') as HTMLElement | null;
+  if (!tooltip) return;
+  const labelEl = document.getElementById('oaep-tooltip-label') as HTMLElement;
+  const bytesEl = document.getElementById('oaep-tooltip-bytes') as HTMLElement;
+  const segments = document.querySelectorAll<HTMLElement>('[data-oaep-field]');
+
+  const positionTooltip = (target: HTMLElement) => {
+    const parent = tooltip.parentElement!;
+    const parentRect = parent.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const left = targetRect.left - parentRect.left;
+    const top  = targetRect.bottom - parentRect.top + 6;
+    tooltip.style.left = `${Math.max(8, Math.min(left, parent.clientWidth - 360))}px`;
+    tooltip.style.top  = `${top}px`;
+  };
+
+  const show = (target: HTMLElement) => {
+    const field = target.dataset.oaepField!;
+    labelEl.textContent = OAEP_FIELD_LABELS[field] ?? field;
+    if (!lastOaepFields) {
+      bytesEl.innerHTML = '<span class="diagram-tooltip-empty">Run an OAEP encryption above to see real bytes here.</span>';
+    } else {
+      const bytes = fieldBytes(lastOaepFields, field);
+      if (!bytes) {
+        bytesEl.textContent = '(no data)';
+      } else {
+        bytesEl.textContent = `${bytes.length} bytes:  ${formatHexGrouped(bytes)}`;
+      }
+    }
+    positionTooltip(target);
+    tooltip.classList.add('visible');
+  };
+
+  const hide = () => tooltip.classList.remove('visible');
+
+  segments.forEach(seg => {
+    seg.addEventListener('mouseenter', () => show(seg));
+    seg.addEventListener('mouseleave', hide);
+    seg.addEventListener('focus',      () => show(seg));
+    seg.addEventListener('blur',       hide);
+    seg.tabIndex = 0;
+  });
 }
 
 /* ── Key Generation ─────────────────────────────────────────── */
@@ -114,6 +205,10 @@ async function doEncrypt(bits: 2048 | 4096): Promise<void> {
 
     lastCiphertext     = ct;
     lastCiphertextBits = bits;
+
+    // Compute the OAEP-encoded intermediate fields (independent random seed)
+    // so the diagram hover can show real bytes for the user's plaintext.
+    try { lastOaepFields = await oaepEncode(pt, bits / 8); } catch { lastOaepFields = null; }
 
     const b64 = toBase64(new Uint8Array(ct));
     setText('oaep-ciphertext', b64);

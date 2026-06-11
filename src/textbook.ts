@@ -60,6 +60,30 @@ export function millerRabin(n: bigint): boolean {
     }
     if (composite) return false;
   }
+
+  // If n is larger than what the deterministic witnesses cover, use 20 random bases
+  if (n >= 3317044064679887385961981n) {
+    for (let k = 0; k < 20; k++) {
+      let a: bigint;
+      do {
+        // Random witness between 2 and n-2
+        // Just take a random bigint of right bit length and modulo
+        const bytes = new Uint8Array(Math.ceil(bitLen(n) / 8));
+        crypto.getRandomValues(bytes);
+        a = (bytesToBigint(bytes) % (n - 3n)) + 2n;
+      } while (a < 2n || a >= n - 1n);
+
+      let x = modPow(a, d, n);
+      if (x === 1n || x === n - 1n) continue;
+      let composite = true;
+      for (let i = 1n; i < r; i++) {
+        x = x * x % n;
+        if (x === n - 1n) { composite = false; break; }
+      }
+      if (composite) return false;
+    }
+  }
+
   return true;
 }
 
@@ -89,9 +113,27 @@ export function generatePrime(bits: number): bigint {
 
 /** Extended Euclidean algorithm. Returns [gcd, s, t] such that a*s + b*t = gcd. */
 export function extGcd(a: bigint, b: bigint): [bigint, bigint, bigint] {
-  if (b === 0n) return [a, 1n, 0n];
-  const [g, s, t] = extGcd(b, a % b);
-  return [g, t, s - (a / b) * t];
+  let old_r = a, r = b;
+  let old_s = 1n, s = 0n;
+  let old_t = 0n, t = 1n;
+  
+  while (r !== 0n) {
+    const quotient = old_r / r;
+    
+    const prov_r = r;
+    r = old_r - quotient * r;
+    old_r = prov_r;
+    
+    const prov_s = s;
+    s = old_s - quotient * s;
+    old_s = prov_s;
+    
+    const prov_t = t;
+    t = old_t - quotient * t;
+    old_t = prov_t;
+  }
+  
+  return [old_r, old_s, old_t];
 }
 
 /** Modular inverse of a mod m. Throws if gcd ≠ 1. */
