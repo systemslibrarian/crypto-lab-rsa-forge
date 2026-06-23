@@ -1552,3 +1552,32 @@ footer {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ═══ Accessibility: faint-text contrast overrides (auto-added) ═══ */
+[data-theme="dark"] .form-input::placeholder,
+[data-theme="dark"] .form-textarea::placeholder,
+[data-theme="dark"] .step-desc,
+[data-theme="dark"] .timing-unit,
+[data-theme="dark"] .interval-labels,
+[data-theme="dark"] .oracle-log-non-conformant,
+[data-theme="dark"] .cve-card-year,
+[data-theme="dark"] .cve-card-vendors,
+[data-theme="dark"] .byte-cell-hex,
+[data-theme="dark"] .byte-cell-ascii,
+[data-theme="dark"] .diagram-tooltip-empty,
+[data-theme="dark"] .hybrid-card-unit,
+[data-theme="dark"] .hybrid-card-note { color: #6e7f97; } /* was #4e6380, now ≥4.6:1 on theme surfaces */
+[data-theme="light"] .form-input::placeholder,
+[data-theme="light"] .form-textarea::placeholder,
+[data-theme="light"] .step-desc,
+[data-theme="light"] .timing-unit,
+[data-theme="light"] .interval-labels,
+[data-theme="light"] .oracle-log-non-conformant,
+[data-theme="light"] .cve-card-year,
+[data-theme="light"] .cve-card-vendors,
+[data-theme="light"] .byte-cell-hex,
+[data-theme="light"] .byte-cell-ascii,
+[data-theme="light"] .diagram-tooltip-empty,
+[data-theme="light"] .hybrid-card-unit,
+[data-theme="light"] .hybrid-card-note { color: #616f83; } /* was #8fa3c0, now ≥4.6:1 on theme surfaces */
