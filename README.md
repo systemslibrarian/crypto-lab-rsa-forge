@@ -1,14 +1,5 @@
 # crypto-lab-rsa-forge
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blue?style=for-the-badge)](https://systemslibrarian.github.io/crypto-lab-rsa-forge/)
-[![RSA-2048](https://img.shields.io/badge/RSA--2048-WebCrypto-navy?style=flat-square)](https://www.w3.org/TR/WebCryptoAPI/)
-[![RSA-4096](https://img.shields.io/badge/RSA--4096-WebCrypto-navy?style=flat-square)](https://www.w3.org/TR/WebCryptoAPI/)
-[![OAEP](https://img.shields.io/badge/OAEP-RFC%208017-teal?style=flat-square)](https://www.rfc-editor.org/rfc/rfc8017)
-[![PSS](https://img.shields.io/badge/PSS-RFC%208017-teal?style=flat-square)](https://www.rfc-editor.org/rfc/rfc8017)
-[![PKCS#1 v1.5](https://img.shields.io/badge/PKCS%231%20v1.5-LEGACY-orange?style=flat-square)](https://www.rfc-editor.org/rfc/rfc8017)
-
----
-
 ## What It Is
 
 RSA Forge is a browser-based interactive demonstration of RSA encryption, signatures, and real attack vectors. It covers textbook RSA (raw BigInt modular exponentiation), RSA-OAEP-SHA-256 encryption (RFC 8017 §7.1), RSA-PSS-SHA-256 signatures (RFC 8017 §8.1), Håstad's broadcast attack on small-exponent unpadded RSA, and Bleichenbacher's adaptive chosen-ciphertext attack on PKCS#1 v1.5 padding oracles. RSA is an asymmetric (public-key) cryptosystem — security rests on the hardness of integer factorization. All operations run entirely in the browser using the WebCrypto API for real 2048/4096-bit keys and native JavaScript BigInt for textbook arithmetic; there is no backend.
@@ -20,10 +11,11 @@ RSA Forge is a browser-based interactive demonstration of RSA encryption, signat
 - **Wrapping symmetric keys for hybrid encryption** — RSA-OAEP is commonly used to transport an AES session key, since RSA plaintext is limited to modulus size minus padding overhead (k − 66 bytes for SHA-256).
 - **Legacy interoperability with systems that require RSA** — many existing protocols (TLS certificate signatures, S/MIME, PKCS#12) still mandate RSA support.
 - **Do NOT use RSA when post-quantum security is required** — Shor's algorithm breaks all RSA key sizes in polynomial time on a fault-tolerant quantum computer. Use ML-KEM (FIPS 203) for key encapsulation or ML-DSA (FIPS 204) for signatures instead.
+- Do NOT treat this as production cryptography — it is a teaching demo for understanding RSA and its attacks, not a hardened library.
 
 ## Live Demo
 
-🔗 **https://systemslibrarian.github.io/crypto-lab-rsa-forge/**
+**[systemslibrarian.github.io/crypto-lab-rsa-forge](https://systemslibrarian.github.io/crypto-lab-rsa-forge/)**
 
 The demo has six tabbed panels. You can generate real RSA key pairs (small or 2048/4096-bit), encrypt and decrypt messages with textbook RSA or RSA-OAEP, sign and verify with RSA-PSS, run a live Håstad broadcast attack that recovers plaintext via CRT and cube root, and execute a real Bleichenbacher PKCS#1 v1.5 padding oracle attack on 128-bit RSA. Controls include key size selection (32-bit primes, 2048-bit, 4096-bit), plaintext input, and attack abort.
 
@@ -43,45 +35,34 @@ The demo has six tabbed panels. You can generate real RSA key pairs (small or 20
 - **Code signing** — Windows Authenticode, macOS codesign, and Java JAR signing all support RSA signatures to verify that binaries have not been tampered with.
 - **JSON Web Tokens (JWT)** — the `RS256`, `RS384`, and `RS512` algorithms in RFC 7518 use RSASSA-PKCS1-v1_5 signatures; `PS256`, `PS384`, `PS512` use RSASSA-PSS.
 
----
-
-## Running Locally
+## How to Run Locally
 
 ```bash
-git clone https://github.com/systemslibrarian/crypto-lab-rsa-forge.git
+git clone https://github.com/systemslibrarian/crypto-lab-rsa-forge
 cd crypto-lab-rsa-forge
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173/crypto-lab-rsa-forge/ in your browser.
-
-### Build for production
-
-```bash
-npm run build
-```
-
-Output is in `dist/`.
-
-### Deploy to GitHub Pages
-
-```bash
-npm run deploy
-```
-
-Requires `gh-pages` package and appropriate GitHub repository permissions.
-
----
-
 ## Related Demos
 
-- **[crypto-lab-kyber-vault](https://systemslibrarian.github.io/crypto-lab-kyber-vault/)** — ML-KEM-768 (FIPS 203): the RSA replacement
-- **[crypto-lab-iron-letter](https://systemslibrarian.github.io/crypto-lab-iron-letter/)** — AES-GCM and ChaCha20-Poly1305 symmetric encryption
-- **[crypto-lab-dilithium-seal](https://systemslibrarian.github.io/crypto-lab-dilithium-seal/)** — ML-DSA-65 (FIPS 204): post-quantum digital signatures
-- **[crypto-compare](https://systemslibrarian.github.io/crypto-compare/#asymmetric)** — Side-by-side algorithm comparison
-- **[Crypto Lab](https://systemslibrarian.github.io/)** — Full collection of interactive cryptography demos
+- [crypto-lab-kyber-vault](https://systemslibrarian.github.io/crypto-lab-kyber-vault/) — ML-KEM (FIPS 203), the post-quantum key encapsulation built to replace RSA key transport.
+- [crypto-lab-dilithium-seal](https://systemslibrarian.github.io/crypto-lab-dilithium-seal/) — ML-DSA (FIPS 204), the post-quantum replacement for RSA/ECDSA signatures.
+- [crypto-lab-iron-letter](https://systemslibrarian.github.io/crypto-lab-iron-letter/) — hybrid public-key encryption (ECIES, RSA-OAEP, AES-256-GCM) for real message sealing.
+- [crypto-lab-ecdsa-forge](https://systemslibrarian.github.io/crypto-lab-ecdsa-forge/) — elliptic-curve signatures and the nonce-reuse attacks that break them.
+- [crypto-lab-shor](https://systemslibrarian.github.io/crypto-lab-shor/) — Shor's algorithm, the quantum period-finding attack that factors RSA moduli.
+
+## Building and Deploying
+
+```bash
+npm run build      # production build, output in dist/
+npm run deploy     # publish to GitHub Pages (requires gh-pages and repo permissions)
+```
+
+After `npm run dev`, open http://localhost:5173/crypto-lab-rsa-forge/ in your browser.
 
 ---
 
-> *"So whether you eat or drink or whatever you do, do it all for the glory of God." — 1 Corinthians 10:31*
+*One of 60+ browser demos in the [Crypto Lab](https://crypto-lab.systemslibrarian.dev/) suite.*
+
+*"So whether you eat or drink or whatever you do, do it all for the glory of God." — 1 Corinthians 10:31*
