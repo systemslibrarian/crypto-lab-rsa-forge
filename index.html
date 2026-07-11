@@ -318,14 +318,14 @@
             </button>
             <div id="tb-encrypt-result" class="crypto-value-container" style="margin-top: 1rem;" hidden>
               <div class="crypto-value-label">Ciphertext (hex)</div>
-              <div class="crypto-value" id="tb-ciphertext" aria-label="RSA ciphertext in hexadecimal"></div>
+              <div class="crypto-value" id="tb-ciphertext" role="status" aria-live="polite" aria-label="RSA ciphertext in hexadecimal"></div>
             </div>
           </div>
           <div>
             <div id="tb-decrypt-section" hidden>
               <div class="crypto-value-container">
                 <div class="crypto-value-label">Decrypted plaintext</div>
-                <div class="crypto-value" id="tb-decrypted" aria-label="Decrypted message"></div>
+                <div class="crypto-value" id="tb-decrypted" role="status" aria-live="polite" aria-label="Decrypted message"></div>
               </div>
               <button id="tb-decrypt" class="btn btn-secondary" style="margin-bottom: 1rem;" aria-label="Decrypt ciphertext back to plaintext">
                 Decrypt (c<sup>d</sup> mod n)
@@ -355,7 +355,7 @@
               </div>
               <div class="step-item">
                 <div class="step-label">Match?</div>
-                <div class="step-value" id="tb-ct-match" style="color: var(--color-danger);">—</div>
+                <div class="step-value" id="tb-ct-match" style="color: var(--c-danger);">—</div>
                 <div class="step-desc">Same plaintext → same ciphertext always</div>
               </div>
             </div>
@@ -522,7 +522,7 @@
         <div id="oaep-encrypt-result" hidden aria-live="polite">
           <div class="crypto-value-container" style="margin-top: 1.5rem;">
             <div class="crypto-value-label">Ciphertext (Base64)</div>
-            <div class="crypto-value large-number" id="oaep-ciphertext" aria-label="RSA-OAEP ciphertext in Base64"></div>
+            <div class="crypto-value large-number" id="oaep-ciphertext" role="status" aria-live="polite" aria-label="RSA-OAEP ciphertext in Base64"></div>
           </div>
         </div>
       </div>
@@ -549,7 +549,7 @@
             </div>
             <div class="step-item">
               <div class="step-label">Ciphertexts identical?</div>
-              <div class="step-value" id="oaep-ct-match" style="color: var(--color-safe);">—</div>
+              <div class="step-value" id="oaep-ct-match" style="color: var(--c-safe);">—</div>
               <div class="step-desc">Randomized padding prevents ciphertext comparison attacks</div>
             </div>
           </div>
@@ -668,7 +668,7 @@
           <div id="pss-signature-result" hidden style="margin-top: 1.5rem;" aria-live="polite">
             <div class="crypto-value-container">
               <div class="crypto-value-label">Signature (Base64, sLen=32)</div>
-              <div class="crypto-value large-number" id="pss-signature" aria-label="RSA-PSS signature in Base64"></div>
+              <div class="crypto-value large-number" id="pss-signature" role="status" aria-live="polite" aria-label="RSA-PSS signature in Base64"></div>
             </div>
           </div>
         </div>
@@ -964,7 +964,7 @@
             </div>
             <div class="step-item">
               <div class="step-label">m = ∛M (recovered)</div>
-              <div class="step-value" id="hastad-recovered" style="color: var(--color-danger);">—</div>
+              <div class="step-value" id="hastad-recovered" style="color: var(--c-danger);">—</div>
               <div class="step-desc">Original plaintext revealed</div>
             </div>
           </div>
@@ -1117,7 +1117,7 @@
           </div>
           <div class="crypto-value-container" style="margin-top: 1rem;">
             <div class="crypto-value-label">Intercepted ciphertext c (hex)</div>
-            <div class="crypto-value" id="bb-ciphertext" aria-label="Bleichenbacher target ciphertext in hexadecimal"></div>
+            <div class="crypto-value" id="bb-ciphertext" role="status" aria-live="polite" aria-label="Bleichenbacher target ciphertext in hexadecimal"></div>
           </div>
         </div>
       </div>
@@ -1147,7 +1147,7 @@
               Query Oracle
             </button>
           </div>
-          <div id="bb-oracle-result" class="oracle-query-log" aria-live="polite" aria-label="Oracle query results"></div>
+          <div id="bb-oracle-result" class="oracle-query-log" role="status" tabindex="0" aria-live="polite" aria-label="Oracle query results"></div>
         </div>
       </div>
 
@@ -1221,7 +1221,7 @@
             <div class="crypto-value-label" style="margin-bottom: 0.5rem;">
               Interval [a, b] converging to m (normalized: 0 = 2B, 1 = 3B−1):
             </div>
-            <div class="interval-bar-container" aria-label="Attack interval narrowing progress bar">
+            <div class="interval-bar-container" role="progressbar" aria-label="Attack interval narrowing progress bar" aria-valuemin="0" aria-valuemax="100">
               <div class="interval-bar" id="bb-interval-bar" style="left: 0%; width: 100%;" aria-hidden="true"></div>
             </div>
             <div class="interval-labels" aria-hidden="true">
@@ -1235,7 +1235,7 @@
             <div class="byte-reveal-label">
               Plaintext recovery — bytes that are uniquely determined by the current interval [a, b]
             </div>
-            <div class="byte-row" id="bb-byte-row" aria-live="polite" aria-label="Recovered plaintext bytes"></div>
+            <div class="byte-row" id="bb-byte-row" role="status" aria-live="polite" aria-label="Recovered plaintext bytes"></div>
             <div class="step-desc" style="margin-top: 0.5rem;">
               Each cell shows one byte of the unknown plaintext. A byte becomes <strong style="color: var(--c-safe);">known</strong>
               when the high-byte of <code>a</code> and <code>b</code> agree at that position. Watch them light up as
@@ -1243,14 +1243,14 @@
             </div>
           </div>
 
-          <div id="bb-attack-log" class="oracle-query-log" style="max-height: 160px; margin-top: 1rem;" aria-label="Attack progress log" aria-live="off"></div>
+          <div id="bb-attack-log" class="oracle-query-log" style="max-height: 160px; margin-top: 1rem;" role="log" tabindex="0" aria-label="Attack progress log" aria-live="off"></div>
         </div>
 
         <div id="bb-recovered" class="result-box result-box-error" style="margin-top: 1rem;" hidden aria-live="assertive">
           <div class="result-box-icon" aria-hidden="true">🔓</div>
           <div class="result-box-title">Plaintext Recovered</div>
           <div class="result-box-text" id="bb-recovered-text">—</div>
-          <div class="crypto-value" id="bb-recovered-hex" style="margin-top: 0.75rem;" aria-label="Recovered plaintext in hexadecimal"></div>
+          <div class="crypto-value" id="bb-recovered-hex" style="margin-top: 0.75rem;" role="status" aria-live="polite" aria-label="Recovered plaintext in hexadecimal"></div>
         </div>
       </div>
 
@@ -1413,35 +1413,35 @@
           <div class="bar-row">
             <div class="bar-label">RSA-4096</div>
             <div class="bar-track" aria-label="RSA-4096 key size 512 bytes">
-              <div class="bar-fill" style="width: 100%; background: var(--color-danger);">512 B</div>
+              <div class="bar-fill" style="width: 100%; background-color: var(--c-danger);">512 B</div>
             </div>
             <div class="bar-value-label">512 B</div>
           </div>
           <div class="bar-row">
             <div class="bar-label">RSA-2048</div>
             <div class="bar-track" aria-label="RSA-2048 key size 256 bytes">
-              <div class="bar-fill" style="width: 50%; background: var(--color-warn);">256 B</div>
+              <div class="bar-fill" style="width: 50%; background-color: var(--c-warn);">256 B</div>
             </div>
             <div class="bar-value-label">256 B</div>
           </div>
           <div class="bar-row">
             <div class="bar-label">ML-KEM-768</div>
             <div class="bar-track" aria-label="ML-KEM-768 key size 1184 bytes — largest shown">
-              <div class="bar-fill" style="width: 100%; max-width: 100%; background: var(--color-safe);">1184 B</div>
+              <div class="bar-fill" style="width: 100%; max-width: 100%; background-color: var(--c-safe);">1184 B</div>
             </div>
             <div class="bar-value-label">1184 B</div>
           </div>
           <div class="bar-row">
             <div class="bar-label">P-256</div>
             <div class="bar-track" aria-label="P-256 key size 64 bytes">
-              <div class="bar-fill" style="width: 6.25%; background: var(--color-primary);">—</div>
+              <div class="bar-fill" style="width: 6.25%; background-color: var(--c-primary);">—</div>
             </div>
             <div class="bar-value-label">64 B</div>
           </div>
           <div class="bar-row">
             <div class="bar-label">X25519</div>
             <div class="bar-track" aria-label="X25519 key size 32 bytes">
-              <div class="bar-fill" style="width: 3.1%; background: var(--color-primary);">—</div>
+              <div class="bar-fill" style="width: 3.1%; background-color: var(--c-primary);">—</div>
             </div>
             <div class="bar-value-label">32 B</div>
           </div>

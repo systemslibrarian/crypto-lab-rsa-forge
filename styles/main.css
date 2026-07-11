@@ -48,7 +48,7 @@
 
   --c-text:        #dde6f0;
   --c-text-muted:  #8ba3c0;
-  --c-text-faint:  #4e6380;
+  --c-text-faint:  #7e90a8;   /* was #4e6380 — now ≥4.5:1 on card surface #141f33 */
 
   --c-primary:     #38bdf8;   /* sky-400  — 4.5:1+ on dark bg */
   --c-accent:      #818cf8;   /* indigo-400 */
@@ -81,7 +81,7 @@
 
   --c-text:        #1a2233;
   --c-text-muted:  #445573;
-  --c-text-faint:  #8fa3c0;
+  --c-text-faint:  #5a687c;   /* was #8fa3c0 — now ≥4.5:1 on light surfaces incl. #eaf0f8 */
 
   --c-primary:     #0369a1;   /* sky-700 — 4.7:1 on white */
   --c-accent:      #4338ca;   /* indigo-700 */
@@ -946,9 +946,11 @@ main {
   padding-left: var(--space-3);
   font-size: var(--text-xs);
   font-weight: 700;
-  color: #000;
+  color: #000;   /* dark theme: fills are bright (danger/warn/safe/primary-400) → black ink ≥7:1 */
   min-width: 28px;
 }
+/* Light theme fills are dark (700-weight tokens) → white ink ≥5.9:1. */
+[data-theme="light"] .bar-fill { color: #fff; }
 
 .bar-value-label {
   width: 70px;
@@ -1154,6 +1156,17 @@ footer {
   color: var(--c-text-muted);
   font-style: italic;
   max-width: 520px;
+}
+.footer-links {
+  font-size: var(--text-sm);
+  color: var(--c-text-muted);
+  max-width: 640px;
+}
+/* Inline text links: themed color with sufficient contrast + persistent
+   underline (WCAG link-in-text-block — color alone must not be the only cue). */
+.footer-links a {
+  color: var(--c-primary);
+  text-decoration: underline;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1567,7 +1580,7 @@ footer {
 [data-theme="dark"] .byte-cell-ascii,
 [data-theme="dark"] .diagram-tooltip-empty,
 [data-theme="dark"] .hybrid-card-unit,
-[data-theme="dark"] .hybrid-card-note { color: #6e7f97; } /* was #4e6380, now ≥4.6:1 on theme surfaces */
+[data-theme="dark"] .hybrid-card-note { color: #7e90a8; } /* ≥4.5:1 on card surface #141f33 */
 [data-theme="light"] .form-input::placeholder,
 [data-theme="light"] .form-textarea::placeholder,
 [data-theme="light"] .step-desc,
@@ -1580,4 +1593,4 @@ footer {
 [data-theme="light"] .byte-cell-ascii,
 [data-theme="light"] .diagram-tooltip-empty,
 [data-theme="light"] .hybrid-card-unit,
-[data-theme="light"] .hybrid-card-note { color: #616f83; } /* was #8fa3c0, now ≥4.6:1 on theme surfaces */
+[data-theme="light"] .hybrid-card-note { color: #5a687c; } /* ≥4.5:1 on light surfaces incl. #eaf0f8 */
