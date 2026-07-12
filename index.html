@@ -154,8 +154,17 @@
               <span class="primitive-chip" aria-label="Primitive: PKCS#1 v1.5">PKCS#1 v1.5</span>
             </nav>
           </div>
-          <h1 class="site-title">RSA Forge</h1>
-          <p class="site-subtitle">Interactive demonstration of RSA encryption, padding schemes, signatures, and live attack vectors — all running in your browser with real cryptographic operations.</p>
+          <div class="cl-hero">
+            <div class="cl-hero-main">
+              <h1 class="cl-hero-title">RSA Forge</h1>
+              <p class="cl-hero-sub">RSA-2048/4096 · OAEP · PSS · PKCS#1 v1.5</p>
+              <p class="cl-hero-desc">Generate real RSA keys in your browser and watch encryption, OAEP/PSS padding, and signatures run — then launch live Håstad broadcast and Bleichenbacher padding-oracle attacks against textbook RSA.</p>
+            </div>
+            <aside class="cl-hero-why" aria-label="Why it matters">
+              <span class="cl-hero-why-label">WHY IT MATTERS</span>
+              <p class="cl-hero-why-text">RSA still guards TLS, SSH, JWTs, and code signing in 2026, yet ships broken when padding is wrong — Bleichenbacher (1998) resurfaced in production stacks in 2017. And a future quantum computer breaks it outright.</p>
+            </aside>
+          </div>
         </div>
         <button
           id="theme-toggle"
