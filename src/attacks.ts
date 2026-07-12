@@ -29,7 +29,7 @@ import {
    ════════════════════════════════════════════════════════════ */
 
 /** Integer cube root via Newton's method (exact for perfect cubes). */
-function intCubeRoot(n: bigint): bigint {
+export function intCubeRoot(n: bigint): bigint {
   if (n === 0n) return 0n;
   if (n < 0n) throw new Error('Negative cube root not supported');
 
@@ -52,7 +52,7 @@ function intCubeRoot(n: bigint): bigint {
  *  Returns x such that x ≡ a_i (mod n_i), with 0 ≤ x < N = n1·n2·n3.
  *  Ref: Shoup, "A Computational Introduction to Number Theory and Algebra."
  */
-function crt3(
+export function crt3(
   a1: bigint, n1: bigint,
   a2: bigint, n2: bigint,
   a3: bigint, n3: bigint,
@@ -161,26 +161,45 @@ async function runConfigChallenge(choice: 'vulnerable' | 'safe'): Promise<void> 
       crypto.subtle.encrypt({ name: 'RSA-OAEP' }, r.publicKey, pt),
     ));
 
-    // Try the attack: even reading the bytes of ct1, ct2, ct3 reveals nothing.
-    // Each ciphertext is a 256-byte randomized blob; XOR-ing them shows no structure.
-    const c1 = new Uint8Array(cts[0]);
-    const c2 = new Uint8Array(cts[1]);
-    const c3 = new Uint8Array(cts[2]);
-    let identical12 = c1.length === c2.length;
-    for (let i = 0; identical12 && i < c1.length; i++) if (c1[i] !== c2[i]) identical12 = false;
-    let identical13 = c1.length === c3.length;
-    for (let i = 0; identical13 && i < c1.length; i++) if (c1[i] !== c3[i]) identical13 = false;
-    const allDiffer = !identical12 && !identical13;
+    // Actually RUN Håstad on the real OAEP ciphertexts and show it fails.
+    // Håstad assumes e is small (3) and the SAME integer m was exponentiated
+    // under each modulus. Here e=65537 and OAEP randomizes every plaintext, so
+    // we deliberately mis-apply the attack with e=3 to demonstrate the recovered
+    // value is garbage — not the message.
+    const moduli = recipients.map(r => spkiModulus(r.publicKey));
+    const [n1, n2, n3] = await Promise.all(moduli);
+    const c1 = bytesToBigint(new Uint8Array(cts[0]));
+    const c2 = bytesToBigint(new Uint8Array(cts[1]));
+    const c3 = bytesToBigint(new Uint8Array(cts[2]));
+
+    let recoveredStr = '(no perfect cube — attack fails)';
+    let recoveredMatches = false;
+    // Guard: CRT needs pairwise-coprime moduli. Distinct RSA moduli are coprime
+    // with overwhelming probability.
+    if (n1 !== n2 && n1 !== n3 && n2 !== n3) {
+      const M3 = crt3(c1, n1, c2, n2, c3, n3);
+      const guess = intCubeRoot(M3);
+      const isPerfectCube = guess * guess * guess === M3;
+      if (isPerfectCube) {
+        // Extraordinarily unlikely; if it happened, check it against the message.
+        try {
+          const recovered = decodeMessage(guess);
+          recoveredMatches = recovered === message;
+          recoveredStr = `"${recovered}"`;
+        } catch { recoveredStr = '(non-decodable bytes)'; }
+      }
+    }
 
     resultBox.className = 'result-box result-box-success';
     iconEl.textContent  = '🛡️';
     titleEl.textContent = 'Your config held. Attack math collapses.';
     textEl.innerHTML =
-      `e = 65537 means c = m<sup>65537</sup> mod n; OAEP adds 32 random bytes per recipient so the three plaintexts ` +
-      `that actually get exponentiated are <em>different</em> values. CRT can't reconstruct a common m<sup>3</sup>. ` +
-      `Identical-ciphertext check across all three recipients: <strong>${allDiffer ? 'all three differ (as required)' : 'unexpected match'}</strong>. ` +
+      `We actually ran Håstad on your three real RSA-2048-OAEP ciphertexts: CRT-combined them and took an integer cube root. ` +
+      `The result was <strong>${recoveredMatches ? 'unexpectedly the message' : 'not your message'}</strong> — recovered value: <code>${recoveredStr}</code>. ` +
+      `Two things break the attack: e = 65537 (not 3) so the ciphertexts are m<sup>65537</sup>, not m<sup>3</sup>; and OAEP prepends 32 fresh random bytes per recipient, ` +
+      `so the three integers that actually get exponentiated are <em>different</em>. There is no common m for CRT to reconstruct. ` +
       `This is the NIST-recommended default and what real production code should use.`;
-    announce('Safe config — Håstad cannot apply.');
+    announce('Safe config — Håstad ran and failed to recover the message.');
     show('cfg-result');
   } catch (err: unknown) {
     resultBox.className = 'result-box result-box-error';
@@ -189,6 +208,18 @@ async function runConfigChallenge(choice: 'vulnerable' | 'safe'): Promise<void> 
     textEl.textContent  = err instanceof Error ? err.message : String(err);
     show('cfg-result');
   }
+}
+
+/** Extract the RSA modulus n from a WebCrypto public key (via JWK 'n'). */
+async function spkiModulus(pub: CryptoKey): Promise<bigint> {
+  const jwk = await crypto.subtle.exportKey('jwk', pub);
+  if (!jwk.n) throw new Error('public key has no modulus');
+  // JWK 'n' is base64url of the big-endian modulus bytes.
+  const b64 = jwk.n.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, '='));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytesToBigint(bytes);
 }
 
 function hastadSetup(): void {
@@ -300,7 +331,7 @@ function hastadAttack(): void {
  *  EM = 0x00 | 0x02 | PS (≥8 random non-zero bytes) | 0x00 | M
  *  RFC 8017 §7.2.1
  */
-function pkcs1v15Pad(message: Uint8Array, k: number): Uint8Array {
+export function pkcs1v15Pad(message: Uint8Array, k: number): Uint8Array {
   const psLen = k - message.length - 3;
   if (psLen < 8) throw new Error('Message too long for PKCS#1 v1.5 padding');
 
@@ -324,11 +355,23 @@ function pkcs1v15Pad(message: Uint8Array, k: number): Uint8Array {
   return em;
 }
 
-/** High-performance non-constant-time PKCS#1 v1.5 unpad (demo only).
- *  Returns message bytes or null if not conformant. */
-function pkcs1v15Unpad(em: Uint8Array): Uint8Array | null {
+/** Non-constant-time PKCS#1 v1.5 unpad (demo only).
+ *  Returns message bytes or null if not conformant.
+ *
+ *  RFC 8017 §7.2.2 requires EM = 0x00 || 0x02 || PS || 0x00 || M where PS is
+ *  at least 8 non-zero octets. The separator scan therefore starts at index 10
+ *  (2 leading bytes + 8-byte minimum PS): any 0x00 before that would mean PS is
+ *  shorter than 8 bytes, i.e. non-conformant padding. We additionally verify
+ *  that every octet of PS in [2, sep) is non-zero, which the earlier version
+ *  skipped — a strict RFC check, not just the demo shortcut. */
+export function pkcs1v15Unpad(em: Uint8Array): Uint8Array | null {
   if (em[0] !== 0x00 || em[1] !== 0x02) return null;
-  // Find 0x00 separator after at least 8 bytes of PS
+  // PS occupies indices [2, sep) and must be >= 8 non-zero octets (RFC 8017
+  // §7.2.2). Reject if any of the first 8 PS octets is 0x00 (would make PS < 8),
+  // then take the first 0x00 at or after index 10 as the separator.
+  for (let j = 2; j < 10 && j < em.length; j++) {
+    if (em[j] === 0x00) return null; // PS shorter than 8 bytes → non-conformant
+  }
   for (let i = 10; i < em.length; i++) {
     if (em[i] === 0x00) return em.slice(i + 1);
   }
@@ -338,12 +381,98 @@ function pkcs1v15Unpad(em: Uint8Array): Uint8Array | null {
 /** Oracle: is this ciphertext PKCS#1 v1.5 conformant?
  *  Returns true iff decryption EM[0] == 0x00 and EM[1] == 0x02.
  */
-function makePkcs1v15Oracle(n: bigint, d: bigint, k: number): (c: bigint) => boolean {
+export function makePkcs1v15Oracle(n: bigint, d: bigint, k: number): (c: bigint) => boolean {
   return (c: bigint): boolean => {
     const m = modPow(c, d, n);
     const em = bigintToBytes(m, k);
     return em[0] === 0x00 && em[1] === 0x02;
   };
+}
+
+/**
+ * Headless Bleichenbacher solver (RFC-faithful, no DOM).
+ *
+ * This is the exact interval-narrowing algorithm the interactive panel runs,
+ * factored out so it can be unit-tested against a known plaintext. Given a
+ * ciphertext c, the public key (n, e), the modulus byte-length k, and a padding
+ * oracle, it returns the recovered integer m with m^e ≡ c (mod n).
+ *
+ * Ref: Bleichenbacher (1998), Algorithm (Steps 1–4), CRYPTO '98.
+ */
+export function bleichenbacherAttack(
+  c: bigint,
+  n: bigint,
+  e: bigint,
+  k: number,
+  oracle: (c: bigint) => boolean,
+  maxQueries = 5_000_000,
+): { m: bigint; queries: number } {
+  const B  = 1n << BigInt(8 * (k - 2));
+  const B2 = 2n * B;
+  const B3 = 3n * B;
+  let queries = 0;
+
+  const query = (cPrime: bigint): boolean => {
+    queries++;
+    if (queries > maxQueries) throw new Error('Bleichenbacher: query budget exceeded');
+    return oracle(cPrime);
+  };
+
+  const narrow = (
+    intervals: [bigint, bigint][],
+    s: bigint,
+  ): [bigint, bigint][] => {
+    const result: [bigint, bigint][] = [];
+    for (const [a, b] of intervals) {
+      const rMin = ceilDiv(a * s - B3 + 1n, n);
+      const rMax = (b * s - B2) / n;
+      for (let r = rMin; r <= rMax; r = r + 1n) {
+        const newA = bigintMax(a, ceilDiv(B2 + r * n, s));
+        const newB = bigintMin(b, (B3 - 1n + r * n) / s);
+        if (newA <= newB) result.push([newA, newB]);
+      }
+    }
+    result.sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
+    const merged: [bigint, bigint][] = [];
+    for (const iv of result) {
+      if (merged.length === 0) { merged.push([iv[0], iv[1]]); continue; }
+      const last = merged[merged.length - 1];
+      if (iv[0] <= last[1] + 1n) last[1] = bigintMax(last[1], iv[1]);
+      else merged.push([iv[0], iv[1]]);
+    }
+    return merged;
+  };
+
+  // Step 1: find s1 >= ceil(n / 3B) with a conformant blinding.
+  let s = ceilDiv(n, B3);
+  while (!query(c * modPow(s, e, n) % n)) s = s + 1n;
+
+  let intervals: [bigint, bigint][] = narrow([[B2, B3 - 1n]], s);
+
+  // Steps 2 & 3: narrow to a single point.
+  while (!(intervals.length === 1 && intervals[0][0] === intervals[0][1])) {
+    if (intervals.length > 1) {
+      // Step 2b: linear search for the next conformant s.
+      s = s + 1n;
+      while (!query(c * modPow(s, e, n) % n)) s = s + 1n;
+    } else {
+      // Step 2c: single interval — search r/s pairs from tighter bounds.
+      const [a, b] = intervals[0];
+      let r = 2n * ceilDiv(b * s - B2, n);
+      let found = false;
+      while (!found) {
+        const sMin = ceilDiv(B2 + r * n, b);
+        const sMax = (B3 - 1n + r * n) / a;
+        for (let si = sMin; si <= sMax; si = si + 1n) {
+          if (query(c * modPow(si, e, n) % n)) { s = si; found = true; break; }
+        }
+        if (!found) r = r + 1n;
+      }
+    }
+    intervals = narrow(intervals, s);
+  }
+
+  return { m: intervals[0][0], queries };
 }
 
 /* ── Bleichenbacher attack state ───────────────────────────── */

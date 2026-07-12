@@ -261,7 +261,7 @@ async function doDecrypt(bits: 2048 | 4096): Promise<void> {
     const statusEl = document.getElementById('oaep-decrypt-status') as HTMLElement;
     const textEl   = document.getElementById('oaep-decrypt-text')   as HTMLElement;
 
-    outputEl.classList.add('result-box-success');
+    outputEl.className = 'result-box result-box-success';
     statusEl.textContent = `✓ Decryption successful (${decTime} ms)`;
     textEl.textContent   = text;
     show('oaep-decrypt-output');

@@ -14,11 +14,18 @@ import { announce, show, setText, setLoading } from './ui.js';
 
 const MEGABYTE = 1024 * 1024;
 const RSA_CHUNK = 190; // OAEP-SHA256 max for 2048-bit modulus
+const MAX_RANDOM_VALUES_BYTES = 65_536;
 
 export function initHybridPanel(): void {
   const btn = document.getElementById('hybrid-run') as HTMLButtonElement | null;
   if (!btn) return;
   btn.addEventListener('click', runHybrid);
+}
+
+function fillRandom(bytes: Uint8Array): void {
+  for (let offset = 0; offset < bytes.length; offset += MAX_RANDOM_VALUES_BYTES) {
+    crypto.getRandomValues(bytes.subarray(offset, offset + MAX_RANDOM_VALUES_BYTES));
+  }
 }
 
 async function runHybrid(): Promise<void> {
@@ -29,7 +36,7 @@ async function runHybrid(): Promise<void> {
 
   try {
     const payload = new Uint8Array(MEGABYTE);
-    crypto.getRandomValues(payload);
+    fillRandom(payload);
 
     // — RSA-OAEP-2048 key (used for #1 and the wrap step of #3) —
     const rsaPair = await crypto.subtle.generateKey(

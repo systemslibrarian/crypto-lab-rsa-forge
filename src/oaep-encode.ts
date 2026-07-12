@@ -18,7 +18,7 @@ async function sha256(data: Uint8Array): Promise<Uint8Array> {
 }
 
 /** MGF1 (RFC 8017 §B.2.1) with SHA-256. */
-async function mgf1(seed: Uint8Array, maskLen: number): Promise<Uint8Array> {
+export async function mgf1(seed: Uint8Array, maskLen: number): Promise<Uint8Array> {
   const blocks = Math.ceil(maskLen / HLEN);
   const out = new Uint8Array(blocks * HLEN);
   const input = new Uint8Array(seed.length + 4);
