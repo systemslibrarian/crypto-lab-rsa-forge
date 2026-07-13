@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   modPow, millerRabin, extGcd, modInverse, gcd, bitLen,
   generateRsaKeyPair, generatePrime, encodeMessage, decodeMessage,
+  isqrt, trialFactor,
 } from '../src/textbook.js';
 
 describe('modPow — modular exponentiation', () => {
@@ -110,6 +111,41 @@ describe('generatePrime / generateRsaKeyPair', () => {
     expect((kp.e * kp.d) % kp.phi).toBe(1n);
     expect(kp.p).not.toBe(kp.q);
     expect(gcd(kp.e, kp.phi)).toBe(1n);
+  });
+});
+
+describe('isqrt — integer square root', () => {
+  it('is exact on perfect squares and floors otherwise', () => {
+    expect(isqrt(0n)).toBe(0n);
+    expect(isqrt(1n)).toBe(1n);
+    expect(isqrt(15n)).toBe(3n);
+    expect(isqrt(16n)).toBe(4n);
+    expect(isqrt(9999n)).toBe(99n);
+    expect(isqrt(1n << 100n)).toBe(1n << 50n);
+  });
+});
+
+describe('trialFactor — honest small-modulus factoring (factoring wall)', () => {
+  it('recovers the two primes of a real small RSA modulus', () => {
+    const kp = generateRsaKeyPair(32, 65537n); // two 16-bit primes → 32-bit n
+    const res = trialFactor(kp.n);
+    expect(res).not.toBeNull();
+    const { p, q } = res!;
+    expect(p * q).toBe(kp.n);
+    // Order-agnostic: {p,q} equals the key's {p,q}.
+    const got = [p, q].sort((a, b) => (a < b ? -1 : 1));
+    const want = [kp.p, kp.q].sort((a, b) => (a < b ? -1 : 1));
+    expect(got).toEqual(want);
+  });
+
+  it('factors an even modulus immediately via 2', () => {
+    expect(trialFactor(2n * 7919n)).toEqual({ p: 2n, q: 7919n, trials: 1 });
+  });
+
+  it('respects the work budget and returns null instead of hanging', () => {
+    // A large semiprime with tiny budget must give up rather than spin.
+    const big = 1000003n * 1000033n; // both prime, ~40-bit n
+    expect(trialFactor(big, 5)).toBeNull();
   });
 });
 

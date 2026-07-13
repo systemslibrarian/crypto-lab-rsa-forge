@@ -10,7 +10,7 @@
  */
 
 import {
-  announce, show, setText, setLoading,
+  announce, show, hide, setText, setLoading,
   bigintToHex, bytesToBigint,
 } from './ui.js';
 
@@ -156,6 +156,40 @@ export function bitLen(n: bigint): number {
   return n === 0n ? 0 : n.toString(2).length;
 }
 
+/** Integer square root (floor) via Newton's method. */
+export function isqrt(n: bigint): bigint {
+  if (n < 0n) throw new Error('isqrt of negative');
+  if (n < 2n) return n;
+  let x = 1n << BigInt(Math.ceil(bitLen(n) / 2));
+  while (true) {
+    const y = (x + n / x) >> 1n;
+    if (y >= x) break;
+    x = y;
+  }
+  return x;
+}
+
+/**
+ * Factor a semiprime n = p·q by real trial division, returning [p, q, trials].
+ * Honest brute force: divides by 2 then every odd number up to √n. Fast for the
+ * ~32-bit demo modulus (√n ≈ 2^16, so ≤ ~32k trials), infeasible for real keys.
+ * `budget` caps the work so a mistakenly-large n can't hang the UI.
+ */
+export function trialFactor(
+  n: bigint,
+  budget = 20_000_000,
+): { p: bigint; q: bigint; trials: number } | null {
+  if (n % 2n === 0n) return { p: 2n, q: n / 2n, trials: 1 };
+  const limit = isqrt(n);
+  let trials = 1; // counted the /2 check
+  for (let d = 3n; d <= limit; d += 2n) {
+    trials++;
+    if (trials > budget) return null;
+    if (n % d === 0n) return { p: d, q: n / d, trials };
+  }
+  return null; // prime (shouldn't happen for a proper RSA modulus)
+}
+
 /* ── RSA Key Generation ─────────────────────────────────────── */
 
 export interface RsaKeyPair {
@@ -222,6 +256,7 @@ export function initTextbookPanel(): void {
   const btnEncrypt    = document.getElementById('tb-encrypt')    as HTMLButtonElement;
   const btnDecrypt    = document.getElementById('tb-decrypt')    as HTMLButtonElement;
   const btnDeterminism = document.getElementById('tb-determinism') as HTMLButtonElement;
+  const btnFactor     = document.getElementById('tb-factor-run')   as HTMLButtonElement | null;
 
   btnSmall.addEventListener('click', () => generateKey(32,  btnSmall));
   btn2048.addEventListener('click',  () => generateKey(256, btn2048));
@@ -229,6 +264,69 @@ export function initTextbookPanel(): void {
   btnEncrypt.addEventListener('click', encryptMessage);
   btnDecrypt.addEventListener('click', decryptMessage);
   btnDeterminism.addEventListener('click', demonstrateDeterminism);
+  if (btnFactor) {
+    btnFactor.addEventListener('click', runFactorWall);
+    // The factoring wall stands on its own (self-generating tiny n); show it up
+    // front so the trapdoor is felt before keys are even generated.
+    newFactorTarget();
+    show('tb-factor-card');
+  }
+}
+
+/** The tiny modulus shown in the factoring wall (freshly generated real primes,
+ *  sized so honest trial division finishes in milliseconds). */
+let factorN: bigint | null = null;
+
+/** Generate a fresh ~40-bit semiprime for the factoring wall (two ~20-bit
+ *  primes). √n ≈ 2^20 ≈ 1e6, so real trial division completes in a few ms —
+ *  small enough to *feel* the easy direction, large enough to be a genuine RSA
+ *  modulus rather than a toy. */
+function newFactorTarget(): void {
+  const kp = generateRsaKeyPair(40, 65537n); // n ≈ 40 bits
+  factorN = kp.n;
+  setText('tb-factor-n', kp.n.toString(10));
+  hide('tb-factor-result');
+}
+
+/** Factoring wall: honestly trial-divide the tiny demo n in the browser. */
+function runFactorWall(): void {
+  const btn = document.getElementById('tb-factor-run') as HTMLButtonElement;
+  const foundEl  = document.getElementById('tb-factor-found')  as HTMLElement;
+  const detailEl = document.getElementById('tb-factor-detail') as HTMLElement;
+  if (factorN === null) newFactorTarget();
+
+  const lbl = btn.getAttribute('aria-label') ?? '';
+  setLoading(btn, true);
+  announce('Trial-dividing n to find its two secret primes…');
+
+  setTimeout(() => {
+    try {
+      const n = factorN!;
+      const t0 = performance.now();
+      const res = trialFactor(n);
+      const ms = performance.now() - t0;
+      show('tb-factor-result');
+      if (res) {
+        foundEl.textContent = `Factored! n = ${res.p} × ${res.q}`;
+        detailEl.textContent =
+          `Recovered both secret primes by testing ${res.trials.toLocaleString()} divisors in ` +
+          `${ms < 1 ? '<1' : ms.toFixed(1)} ms. ` +
+          `With p and q, an attacker recomputes φ(n) and the private key d — game over. ` +
+          `Trial division only had to reach √n ≈ ${isqrt(n).toLocaleString()}. Now look right: for a ` +
+          `2048-bit n, √n has ~308 digits, so that same loop never finishes. Same operation — the size of n is the whole defense.`;
+        announce(`Factored n into ${res.p} and ${res.q} in ${ms < 1 ? 'under 1' : ms.toFixed(1)} milliseconds.`);
+        // Fresh target so pressing again re-runs on a new n (still instant).
+        newFactorTarget();
+      } else {
+        foundEl.textContent = 'No factor found within budget.';
+        detailEl.textContent = 'Unexpected for a tiny modulus — press again to regenerate n and retry.';
+        announce('No factor found within budget.');
+        newFactorTarget();
+      }
+    } finally {
+      setLoading(btn, false, lbl);
+    }
+  }, 10);
 }
 
 function generateKey(primeBits: number, btn: HTMLButtonElement): void {

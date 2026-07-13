@@ -11,10 +11,12 @@ import { initHastadPanel, initBleichenbacherPanel } from './attacks.js';
 import { initComparePanel } from './compare.js';
 import { initDeterminismPanel } from './determinism.js';
 import { initHybridPanel } from './hybrid.js';
+import { initGlossary } from './glossary.js';
 
 // Initialize once the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   initUI();
+  initGlossary();
   initTextbookPanel();
   initOaepPanel();
   initPssPanel();

@@ -177,6 +177,40 @@
     </div>
   </header>
 
+  <!-- ===== PLAIN-LANGUAGE ON-RAMP (before any panel) ===== -->
+  <section class="intro-onramp" aria-labelledby="intro-onramp-title">
+    <div class="intro-onramp-inner">
+      <div class="intro-onramp-icon" aria-hidden="true">🔓→🔒</div>
+      <div class="intro-onramp-body">
+        <h2 class="intro-onramp-title" id="intro-onramp-title">New to public-key crypto? Start here.</h2>
+        <p class="intro-onramp-lead">
+          The <strong>public key</strong> is an open padlock that anyone can snap shut on a box; the
+          <strong>private key</strong> is the only key that opens it. So anyone can lock a message to you,
+          but only you can read it. RSA builds that padlock out of a single number <code>n</code> that is the
+          product of two secret prime numbers — <em>easy to multiply together, but effectively impossible to
+          pull back apart</em>. That one-way difficulty is the whole trick: it is called a
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                aria-describedby="gloss-body" data-gloss="trapdoor">trapdoor</span>, and everything below is
+          built on it.
+        </p>
+        <p class="intro-onramp-more">
+          Below you can generate real keys, encrypt and decrypt, add the padding
+          (<span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                 aria-describedby="gloss-body" data-gloss="oaep">OAEP</span>,
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                 aria-describedby="gloss-body" data-gloss="pss">PSS</span>) that makes RSA safe in
+          practice, and then <em>break</em> the versions that skip it. Hover or tap any
+          <span class="gloss-example">dotted term</span> for a plain-language definition.
+        </p>
+      </div>
+    </div>
+    <!-- shared, single popover reused by every glossary term (keeps DOM light) -->
+    <div class="gloss-popover" id="gloss-body" role="tooltip" aria-label="Glossary definition" hidden>
+      <span class="gloss-popover-term" id="gloss-popover-term"></span>
+      <span class="gloss-popover-def" id="gloss-popover-def"></span>
+    </div>
+  </section>
+
   <!-- ===== PANEL NAVIGATION ===== -->
   <nav class="panel-nav" aria-label="Demo panels">
     <ul class="tab-list" role="tablist" aria-label="RSA demonstration panels">
@@ -250,6 +284,12 @@
         <p class="card-description">
           Generate real prime numbers p and q, then compute all RSA parameters step by step.
           Use small primes (~32-bit) for visual clarity, or 2048-bit for real cryptographic strength.
+          The chain below turns the two secret primes into a public lock (n, e) and a private key (d) via
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                aria-describedby="gloss-body" data-gloss="phi">φ(n)</span>, and the whole point of
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                aria-describedby="gloss-body" data-gloss="modexp">modular exponentiation</span> is that
+          it only inverts if you know d.
         </p>
         <div class="button-group">
           <button id="tb-gen-small" class="btn btn-primary" aria-label="Generate small RSA key using 32-bit primes for visualization">
@@ -300,7 +340,72 @@
             <div class="math-formula" id="tb-verify" aria-label="Key relationship formula">
               ed mod φ(n) = —
             </div>
+            <p class="step-desc" style="margin-top: 0.5rem; max-width: 70ch;">
+              Why this congruence matters: encrypting raises m to the e-th power, decrypting raises the result
+              to the d-th power, so decryption computes m<sup>(e·d)</sup>. Euler's theorem says that whenever
+              e·d ≡ 1 (mod φ(n)), that giant exponent collapses back to m<sup>1</sup> = m. In plain terms,
+              <strong>d is exactly the exponent that undoes e</strong> — and you can only compute d if you know
+              φ(n), which needs the secret primes p and q. That is the trapdoor, made concrete.
+            </p>
           </div>
+        </div>
+      </div>
+
+      <!-- Factoring wall — feel the trapdoor -->
+      <div class="card" id="tb-factor-card" hidden>
+        <h3 class="card-title">Feel the Trapdoor — Try to Factor n</h3>
+        <p class="card-description">
+          The public number <code>n</code> is public. If an attacker could split it back into its two secret
+          primes p and q, they could rebuild your private key d and read everything. RSA's entire security is
+          the bet that nobody can. Below, factor the small demo <code>n</code> yourself — then see the cost of
+          doing the same to a real 2048-bit key.
+        </p>
+        <div class="factor-wall">
+          <div class="factor-side factor-side-easy">
+            <div class="factor-side-head">
+              <span class="factor-side-tag easy" aria-hidden="true">EASY</span>
+              <span class="factor-side-title">A deliberately tiny n (~40-bit)</span>
+            </div>
+            <div class="factor-side-n">
+              <div class="step-label">n = p × q (freshly generated, real primes)</div>
+              <div class="step-value large-number-inline" id="tb-factor-n">—</div>
+            </div>
+            <button id="tb-factor-run" class="btn btn-primary" aria-label="Brute-force factor the tiny demo modulus n by trial division">
+              Try to factor n
+            </button>
+            <div id="tb-factor-result" class="factor-result" role="status" aria-live="polite" hidden>
+              <div class="factor-found" id="tb-factor-found">—</div>
+              <div class="step-desc" id="tb-factor-detail">—</div>
+            </div>
+          </div>
+          <div class="factor-side factor-side-hard">
+            <div class="factor-side-head">
+              <span class="factor-side-tag hard" aria-hidden="true">IMPOSSIBLE</span>
+              <span class="factor-side-title">A real 2048-bit n</span>
+            </div>
+            <div class="factor-side-n">
+              <div class="step-label">n has ~617 decimal digits</div>
+              <div class="step-value" style="color: var(--c-text-muted);">
+                2048-bit modulus — 2 primes of ~1024 bits each
+              </div>
+            </div>
+            <button class="btn btn-secondary" type="button" disabled
+                    aria-label="Factoring a 2048-bit modulus is computationally infeasible and is disabled">
+              …now try the 2048-bit n
+            </button>
+            <div class="factor-result">
+              <div class="factor-found impossible">≈ 3 × 10<sup>13</sup> years on all computers on Earth</div>
+              <div class="step-desc">
+                The best known algorithm (the general number field sieve) would take longer than the current
+                age of the universe (~1.4 × 10<sup>10</sup> years). Same operation, same button in principle —
+                the only thing that changed is the size of n. That gap <em>is</em> the trapdoor.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="citation" aria-label="Reference" style="margin-top: 1rem;">
+          The small side runs real trial-division in your browser — no shortcuts, no stored answer. The 2048-bit
+          estimate follows GNFS complexity L[1/3, 1.923]; see NIST SP 800-57 Part 1 Rev. 5 §5.6.1.
         </div>
       </div>
 
@@ -416,7 +521,7 @@
         <h3 class="card-title">Why Textbook RSA Is Broken</h3>
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
           <li><strong style="color: var(--color-text);">Deterministic:</strong> Same plaintext always → same ciphertext. Attacker can build an encryption oracle and test known messages.</li>
-          <li><strong style="color: var(--color-text);">Homomorphic weakness:</strong> c₁ · c₂ mod n = Enc(m₁ · m₂) — ciphertexts can be multiplied to produce the encryption of the product.</li>
+          <li><strong style="color: var(--color-text);"><span class="gloss" tabindex="0" role="button" aria-expanded="false" aria-describedby="gloss-body" data-gloss="homomorphic">Homomorphic</span> weakness:</strong> c₁ · c₂ mod n = Enc(m₁ · m₂) — ciphertexts can be multiplied to produce the encryption of the product.</li>
           <li><strong style="color: var(--color-text);">Small message space:</strong> Low-entropy messages (like symmetric keys) are vulnerable to brute-force with an encryption oracle.</li>
           <li><strong style="color: var(--color-text);">No ciphertext integrity:</strong> Any integer is a valid ciphertext — malleability attacks are trivial.</li>
         </ul>
@@ -438,7 +543,12 @@
         </div>
         <p class="panel-description">
           RSA-OAEP (Optimal Asymmetric Encryption Padding) adds randomization and domain separation
-          to make RSA encryption semantically secure. Specified in RFC 8017 (PKCS#1 v2.2), Section 7.1.
+          to make RSA encryption
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                aria-describedby="gloss-body" data-gloss="semantic">semantically secure</span> (in fact
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                aria-describedby="gloss-body" data-gloss="indcca2">IND-CCA2</span>).
+          Specified in RFC 8017 (PKCS#1 v2.2), Section 7.1.
         </p>
         <div class="citation" aria-label="Specification reference">
           <strong>Specification:</strong> RFC 8017 (PKCS#1 v2.2), Section 7.1 — RSA-OAEP. 
@@ -568,13 +678,50 @@
       <!-- OAEP Structure Visualization -->
       <div class="card">
         <h3 class="card-title">OAEP Padding Structure</h3>
+
+        <!-- LEVEL 1: the idea, no bytes -->
         <p class="card-description">
-          OAEP encodes the message using two MGF1 mask operations with a random seed, 
-          providing non-determinism and all-or-nothing decoding.
+          At the highest level, OAEP does one job: take your message plus a fresh
+          <strong>random seed</strong> and scramble them together into one block where <em>every</em> output byte
+          depends on <em>every</em> input byte. Change a single bit of the message or the seed and the entire
+          block changes — so two encryptions of the same message look completely unrelated, and an attacker
+          can't peel off or tamper with any piece.
         </p>
-        <p class="card-description" style="font-style: italic; color: var(--c-text-faint);">
-          After you run an OAEP encryption above, hover any colored segment to see the actual bytes from that operation.
+        <div class="oaep-highlevel" aria-label="High-level OAEP: seed plus message scrambled into one block">
+          <div class="oaep-hl-inputs">
+            <span class="oaep-hl-chip seed">random seed</span>
+            <span class="oaep-hl-plus" aria-hidden="true">+</span>
+            <span class="oaep-hl-chip msg">your message</span>
+          </div>
+          <span class="oaep-hl-arrow" aria-hidden="true">→ scramble →</span>
+          <div class="oaep-hl-out" id="oaep-hl-block" aria-label="Scrambled OAEP block (illustrative bytes)"></div>
+        </div>
+        <div class="button-group" style="margin-top: 1rem;">
+          <button id="oaep-hl-avalanche" class="btn btn-primary" type="button"
+                  aria-label="Flip one input byte and watch the whole scrambled block change (avalanche effect)">
+            Flip one input byte
+          </button>
+        </div>
+        <p class="step-desc" id="oaep-hl-note" style="margin-top: 0.75rem;" aria-live="polite">
+          Press the button to change a single input byte. Watch how many output bytes change — that
+          all-or-nothing spread is called the <span class="gloss" tabindex="0" role="button"
+          aria-expanded="false" aria-describedby="gloss-body" data-gloss="avalanche">avalanche effect</span>.
         </p>
+
+        <!-- LEVEL 2: the real byte fields, opt-in -->
+        <details class="oaep-details">
+          <summary class="oaep-details-summary">
+            Show the full byte-field structure (maskedSeed, maskedDB, MGF1 masks)
+          </summary>
+          <p class="card-description" style="margin-top: 1rem;">
+            Under the hood, that scramble is two
+            <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                  aria-describedby="gloss-body" data-gloss="mgf1">MGF1</span> mask operations driven by the
+            random seed, producing non-determinism and all-or-nothing decoding.
+          </p>
+          <p class="card-description" style="font-style: italic; color: var(--c-text-faint);">
+            After you run an OAEP encryption above, hover any colored segment to see the actual bytes from that operation.
+          </p>
         <div class="oaep-diagram" aria-label="OAEP padding structure diagram" style="position: relative;">
           <div style="margin-bottom: 1rem;">
             <div class="oaep-label">Encoded Message Block (EM = 0x00 ‖ maskedSeed ‖ maskedDB):</div>
@@ -609,6 +756,7 @@
         <div class="citation" aria-label="Specification reference" style="margin-top: 1rem;">
           <strong>Ref:</strong> RFC 8017 §7.1, EMSA-OAEP-ENCODE. MGF1 is defined in §B.2.1.
         </div>
+        </details>
       </div>
 
       <!-- Decrypt -->
@@ -819,8 +967,10 @@
           </span>
         </div>
         <p class="panel-description">
-          If the same unpadded message m is sent to three recipients all using e=3, an attacker 
-          who intercepts all three ciphertexts can recover m using the Chinese Remainder Theorem 
+          If the same unpadded message m is sent to three recipients all using e=3, an attacker
+          who intercepts all three ciphertexts can recover m using the
+          <span class="gloss" tabindex="0" role="button" aria-expanded="false"
+                aria-describedby="gloss-body" data-gloss="crt">Chinese Remainder Theorem</span>
           and integer cube root — no private key needed.
         </p>
         <div class="citation" aria-label="Academic reference">
@@ -981,6 +1131,10 @@
             <div class="result-box-icon" aria-hidden="true">🔓</div>
             <div class="result-box-title">Message Recovered Without Private Key</div>
             <div class="result-box-text" id="hastad-recovered-text">—</div>
+            <div class="whatjust" id="hastad-whatjust" aria-live="polite">
+              <span class="whatjust-label">What just happened:</span>
+              <span class="whatjust-text" id="hastad-whatjust-text">—</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1163,9 +1317,49 @@
       <!-- Attack Execution -->
       <div class="card" id="bb-attack-card" hidden>
         <h3 class="card-title">Execute Bleichenbacher Attack</h3>
-        <p class="card-description">
-          The attack multiplies c by s<sup>e</sup> mod n, where varying s shifts the decryption.
-          Each conformant result constrains the interval [a, b] containing m.
+
+        <!-- Homomorphic lever: show it BEFORE the interval search -->
+        <div class="bb-homomorphic">
+          <div class="bb-homomorphic-head">
+            <span class="bb-homomorphic-tag" aria-hidden="true">THE LEVER</span>
+            <span class="bb-homomorphic-title">First, the one trick the whole attack rests on</span>
+          </div>
+          <p class="card-description" style="margin-bottom: 1rem;">
+            The attacker never decrypts anything. Their only lever is a property RSA gives for free: multiplying
+            two ciphertexts <em>multiplies the plaintexts inside them</em>. So if the attacker multiplies the
+            intercepted <code>c</code> by <code>s<sup>e</sup></code>, the hidden plaintext quietly becomes
+            <code>m × s</code> — a value they chose the multiplier for, even though they can't see it. That is
+            what lets them probe <code>m</code> through the padding oracle. Watch it on two small numbers, using
+            <em>this demo's real key</em>:
+          </p>
+          <div class="bb-homomorphic-demo" id="bb-homomorphic-demo">
+            <div class="bb-hom-row">
+              <div class="bb-hom-cell"><span class="bb-hom-k">a</span><span class="bb-hom-v" id="bb-hom-a">—</span></div>
+              <div class="bb-hom-cell"><span class="bb-hom-k">Enc(a) = aᵉ mod n</span><span class="bb-hom-v" id="bb-hom-enca">—</span></div>
+            </div>
+            <div class="bb-hom-row">
+              <div class="bb-hom-cell"><span class="bb-hom-k">b</span><span class="bb-hom-v" id="bb-hom-b">—</span></div>
+              <div class="bb-hom-cell"><span class="bb-hom-k">Enc(b) = bᵉ mod n</span><span class="bb-hom-v" id="bb-hom-encb">—</span></div>
+            </div>
+            <div class="bb-hom-row bb-hom-result">
+              <div class="bb-hom-cell"><span class="bb-hom-k">Enc(a) × Enc(b) mod n</span><span class="bb-hom-v" id="bb-hom-prod">—</span></div>
+              <div class="bb-hom-cell"><span class="bb-hom-k">Enc(a × b) directly</span><span class="bb-hom-v" id="bb-hom-encab">—</span></div>
+            </div>
+            <div class="bb-hom-verdict" id="bb-hom-verdict" role="status" aria-live="polite">—</div>
+          </div>
+          <div class="button-group" style="margin-top: 1rem;">
+            <button id="bb-hom-run" class="btn btn-secondary" type="button"
+                    aria-label="Demonstrate that multiplying two ciphertexts equals encrypting the product of the plaintexts">
+              Show Enc(a) × Enc(b) = Enc(a × b)
+            </button>
+          </div>
+        </div>
+
+        <p class="card-description" style="margin-top: 1.5rem;">
+          Now the attack itself. It multiplies c by s<sup>e</sup> mod n, where varying s shifts the decryption
+          to <code>m × s</code>. Each conformant result tells the attacker <code>m × s</code> landed in the
+          valid-padding window, which constrains the interval [a, b] containing m — so the bar below shrinks
+          not by magic, but as a direct consequence of the lever above.
         </p>
         <div class="button-group">
           <button id="bb-run" class="btn btn-danger" aria-label="Run Bleichenbacher adaptive chosen-ciphertext attack">
@@ -1260,6 +1454,10 @@
           <div class="result-box-title">Plaintext Recovered</div>
           <div class="result-box-text" id="bb-recovered-text">—</div>
           <div class="crypto-value" id="bb-recovered-hex" style="margin-top: 0.75rem;" role="status" aria-live="polite" aria-label="Recovered plaintext in hexadecimal"></div>
+          <div class="whatjust" id="bb-whatjust" aria-live="polite">
+            <span class="whatjust-label">What just happened:</span>
+            <span class="whatjust-text" id="bb-whatjust-text">—</span>
+          </div>
         </div>
       </div>
 

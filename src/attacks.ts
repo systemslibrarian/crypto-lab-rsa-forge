@@ -317,6 +317,15 @@ function hastadAttack(): void {
 
   const el = document.getElementById('hastad-recovered-text') as HTMLElement;
   el.textContent = `Recovered message: "${recovered}" (hex: 0x${bigintToHex(m)})`;
+
+  const wj = document.getElementById('hastad-whatjust-text');
+  if (wj) {
+    wj.textContent =
+      `You recovered the exact message "${recovered}" with no private key, using only the three public ` +
+      `ciphertexts. Because e = 3 and there was no padding, the same integer m was cubed under each modulus, so ` +
+      `m³ stayed smaller than n₁·n₂·n₃ and never wrapped. CRT rebuilt m³ exactly, and a plain cube root undid the ` +
+      `e = 3. Padding (OAEP) or a large exponent (65537) would have broken every one of those steps.`;
+  }
   show('hastad-final-reveal');
 
   announceUrgent(`Attack successful. Recovered plaintext: "${recovered}" — no private key needed.`);
@@ -508,6 +517,8 @@ export function initBleichenbacherPanel(): void {
     .addEventListener('click', bbSetup);
   (document.getElementById('bb-oracle-query') as HTMLButtonElement)
     .addEventListener('click', bbManualQuery);
+  (document.getElementById('bb-hom-run') as HTMLButtonElement | null)
+    ?.addEventListener('click', bbHomomorphicDemo);
   (document.getElementById('bb-run') as HTMLButtonElement)
     .addEventListener('click', () => bbRun(false));
   (document.getElementById('bb-run-oracle-mode') as HTMLButtonElement)
@@ -602,6 +613,50 @@ function bbSetup(): void {
       setLoading(btn, false, lbl);
     }
   }, 10);
+}
+
+/** Homomorphic-lever demo: Enc(a)·Enc(b) mod n = Enc(a·b) on the real demo key.
+ *  Grounds the multiplicative homomorphism the Bleichenbacher attack exploits,
+ *  BEFORE the interval search — so the shrinking bar reads as consequence, not magic. */
+function bbHomomorphicDemo(): void {
+  if (bb.n === 0n) { announce('Set up the demo key first.'); return; }
+  const { n, e } = bb;
+
+  // Two small plaintexts whose product stays below n (trivially true here).
+  const a = 42n;
+  const b = 1000n;
+  const encA  = modPow(a, e, n);
+  const encB  = modPow(b, e, n);
+  const prod  = (encA * encB) % n;      // multiply the two ciphertexts
+  const encAB = modPow(a * b, e, n);    // encrypt the product directly
+  const match = prod === encAB;
+
+  const shortHex = (x: bigint) => {
+    const h = bigintToHex(x);
+    return '0x' + (h.length > 20 ? h.slice(0, 20) + '…' : h);
+  };
+
+  setText('bb-hom-a', a.toString(10));
+  setText('bb-hom-b', b.toString(10));
+  setText('bb-hom-enca', shortHex(encA));
+  setText('bb-hom-encb', shortHex(encB));
+  setText('bb-hom-prod', shortHex(prod));
+  setText('bb-hom-encab', shortHex(encAB));
+
+  const verdict = document.getElementById('bb-hom-verdict') as HTMLElement;
+  if (match) {
+    verdict.className = 'bb-hom-verdict match';
+    verdict.textContent =
+      `✓ Identical. Multiplying the two ciphertexts produced exactly Enc(${a}×${b}) = Enc(${a * b}) — ` +
+      `without ever decrypting. That is RSA’s multiplicative homomorphism, and it is the attacker’s only lever: ` +
+      `by multiplying the target c by sᵉ they force the hidden plaintext to become m×s, then read one bit of it through the oracle.`;
+  } else {
+    verdict.className = 'bb-hom-verdict nomatch';
+    verdict.textContent = '✗ Mismatch (unexpected) — check the demo key setup.';
+  }
+  announce(match
+    ? 'Confirmed: multiplying two ciphertexts equals encrypting the product of their plaintexts.'
+    : 'Homomorphic demo mismatch (unexpected).');
 }
 
 function bbManualQuery(): void {
@@ -975,6 +1030,17 @@ function showRecovery(m: bigint, k: number): void {
 
   const hexEl = document.getElementById('bb-recovered-hex') as HTMLElement;
   hexEl.textContent = `0x${hex}`;
+
+  const wj = document.getElementById('bb-whatjust-text');
+  if (wj) {
+    const recoveredMsg = unpadded ? new TextDecoder().decode(unpadded) : null;
+    wj.textContent =
+      `You decrypted the ciphertext${recoveredMsg ? ` back to "${recoveredMsg}"` : ''} while only ever learning ` +
+      `one bit per query: “do the first two bytes equal 0x00 0x02?” Each multiply-by-sᵉ turned the hidden ` +
+      `plaintext into m×s (the homomorphic lever above), and every “conformant” answer proved m×s fell inside the ` +
+      `padding window [2B, 3B−1], squeezing the interval [a, b] around m until only one value remained. No private ` +
+      `key was used — just a leaky padding check. OAEP’s all-or-nothing decoding removes that one-bit leak entirely.`;
+  }
 
   show('bb-recovered');
   setText('bb-interval-size', '0');

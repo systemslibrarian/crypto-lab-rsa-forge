@@ -9,7 +9,7 @@
  */
 
 import { announce, show, setText, setLoading, toBase64, toHex, truncate } from './ui.js';
-import { oaepEncode, type OaepFields } from './oaep-encode.js';
+import { oaepEncode, mgf1, type OaepFields } from './oaep-encode.js';
 
 interface OaepKeyPair {
   publicKey:  CryptoKey;
@@ -42,6 +42,74 @@ export function initOaepPanel(): void {
     .addEventListener('click', demonstrateRandomization);
 
   initOaepDiagramHover();
+  initOaepHighLevel();
+}
+
+/* ── Level-1 high-level view: seed + message → scrambled block ───
+ * Honest avalanche demo. We scramble a small fixed input (seed ‖ message)
+ * with real MGF1-SHA256, render the output bytes, then on demand flip ONE
+ * input byte and recompute — highlighting every output byte that changed.
+ * No faked bytes: this is the same mask primitive OAEP uses internally. */
+const HL_LEN = 24; // illustrative output length in bytes
+let hlSeed = new Uint8Array(8);
+let hlMsg  = new Uint8Array([0x48, 0x69, 0x21]); // "Hi!"
+let hlLastOut: Uint8Array | null = null;
+
+async function hlScramble(seed: Uint8Array, msg: Uint8Array): Promise<Uint8Array> {
+  const input = new Uint8Array(seed.length + msg.length);
+  input.set(seed, 0);
+  input.set(msg, seed.length);
+  return mgf1(input, HL_LEN);
+}
+
+function renderHlBlock(out: Uint8Array, changed: boolean[] | null): void {
+  const block = document.getElementById('oaep-hl-block');
+  if (!block) return;
+  block.textContent = '';
+  for (let i = 0; i < out.length; i++) {
+    const cell = document.createElement('span');
+    cell.className = 'oaep-hl-byte' + (changed && changed[i] ? ' changed' : '');
+    cell.textContent = out[i].toString(16).padStart(2, '0');
+    block.appendChild(cell);
+  }
+}
+
+function initOaepHighLevel(): void {
+  const block = document.getElementById('oaep-hl-block');
+  const btn   = document.getElementById('oaep-hl-avalanche') as HTMLButtonElement | null;
+  if (!block || !btn) return;
+
+  // Initial render with a random seed.
+  crypto.getRandomValues(hlSeed);
+  hlScramble(hlSeed, hlMsg).then((out) => { hlLastOut = out; renderHlBlock(out, null); });
+
+  btn.addEventListener('click', async () => {
+    // Flip exactly one input byte (alternate seed vs message so repeat presses
+    // keep telling the same story) and recompute the whole scrambled block.
+    const flipSeed = Math.random() < 0.5;
+    if (flipSeed) hlSeed[Math.floor(Math.random() * hlSeed.length)] ^= 0xff;
+    else          hlMsg[Math.floor(Math.random() * hlMsg.length)]  ^= 0x01;
+
+    const out = await hlScramble(hlSeed, hlMsg);
+    let diff = 0;
+    const changed = new Array<boolean>(out.length).fill(false);
+    if (hlLastOut) {
+      for (let i = 0; i < out.length; i++) {
+        if (out[i] !== hlLastOut[i]) { changed[i] = true; diff++; }
+      }
+    }
+    hlLastOut = out;
+    renderHlBlock(out, changed);
+
+    const pct = Math.round((diff / out.length) * 100);
+    setText(
+      'oaep-hl-note',
+      `Flipped one ${flipSeed ? 'random-seed' : 'message'} byte → ${diff} of ${out.length} ` +
+      `output bytes changed (~${pct}%). Roughly half flip every time — that is the avalanche effect. ` +
+      `Because the seed is random on every real encryption, the block is different each time even for the same message.`,
+    );
+    announce(`One input byte flipped; ${diff} of ${out.length} output bytes changed.`);
+  });
 }
 
 /* ── Diagram hover with real bytes ─────────────────────────── */
