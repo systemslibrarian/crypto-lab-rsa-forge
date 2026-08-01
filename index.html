@@ -559,11 +559,14 @@
         <p class="card-description">
           Real 2048-bit and 4096-bit RSA key pairs generated using the browser's WebCrypto API.
           NIST SP 800-57 recommends 2048-bit minimum; 3072-bit or 4096-bit for long-term security.
+          The figures below are <em>classical</em> security strengths from SP 800-57 Part 1 Rev. 5. That is a
+          different scale from the NIST PQC security categories used in the comparison table further down —
+          no RSA key size reaches PQC category 1, because Shor's algorithm breaks RSA outright.
         </p>
         <div class="key-comparison">
           <div>
             <h4 style="font-weight: 700; margin-bottom: 0.75rem;">RSA-2048</h4>
-            <p class="card-description" style="font-size: 0.875rem;">~112-bit classical security (NIST level 3)</p>
+            <p class="card-description" style="font-size: 0.875rem;">~112-bit classical security (SP 800-57 security strength 112)</p>
             <button id="oaep-gen-2048" class="btn btn-primary" aria-label="Generate 2048-bit RSA key pair for OAEP encryption">
               Generate 2048-bit Key Pair
             </button>
@@ -587,7 +590,7 @@
           </div>
           <div>
             <h4 style="font-weight: 700; margin-bottom: 0.75rem;">RSA-4096</h4>
-            <p class="card-description" style="font-size: 0.875rem;">~140-bit classical security (NIST level 4)</p>
+            <p class="card-description" style="font-size: 0.875rem;">~140-bit classical security (between SP 800-57's 128- and 192-bit levels)</p>
             <button id="oaep-gen-4096" class="btn btn-primary" aria-label="Generate 4096-bit RSA key pair for OAEP encryption">
               Generate 4096-bit Key Pair
             </button>
@@ -1242,7 +1245,9 @@
         <h3 class="card-title">Setup — Small RSA for Demonstration</h3>
         <p class="card-description">
           Generate a small RSA key (128-bit modulus, 16 bytes) to make the attack completable in the browser. 
-          In practice, Bleichenbacher's 1998 attack targeted 512-bit SSL server keys.
+          Bleichenbacher's 1998 paper tested the attack against 512-bit and 1024-bit keys, needing between
+          300 thousand and 2 million chosen ciphertexts; its "million message" estimate of roughly 2<sup>20</sup>
+          queries is the figure for a 1024-bit modulus.
         </p>
         <div class="alert alert-info" role="note">
           <span class="alert-icon" aria-hidden="true">🔬</span>
@@ -1438,8 +1443,10 @@
             <div class="byte-row" id="bb-byte-row" role="status" aria-live="polite" aria-label="Recovered plaintext bytes"></div>
             <div class="step-desc" style="margin-top: 0.5rem;">
               Each cell shows one byte of the unknown plaintext. A byte becomes <strong style="color: var(--c-safe);">known</strong>
-              when the high-byte of <code>a</code> and <code>b</code> agree at that position. Watch them light up as
-              the interval shrinks — by the time you see "Hi!" the attack is over.
+              once <code>a</code> and <code>b</code> agree on that byte <em>and every byte before it</em> — a shared
+              prefix is what pins a byte down, since a single matching byte deep in the interval proves nothing while
+              a higher byte can still carry. Watch them light up left to right as the interval shrinks — by the time
+              you see "Hi!" the attack is over.
             </div>
           </div>
 
@@ -1473,8 +1480,10 @@
             </div>
             <div class="cve-card-title">ROBOT — Return of Bleichenbacher</div>
             <div class="cve-card-text">
-              Böck, Somorovsky, Young (USENIX 2018) found 8 major vendors still vulnerable 19 years after the
-              original paper. Affected Facebook, PayPal, and many TLS terminators.
+              Böck, Somorovsky, Young (USENIX 2018) reported vulnerable products from "at least eight different
+              vendors and open source projects" 19 years after the original paper; the disclosure table at
+              robotattack.org has since grown to 21 affected vendors and products. Affected Facebook, PayPal,
+              and many TLS terminators.
             </div>
             <div class="cve-card-vendors">F5 BIG-IP · Citrix · Cisco · Radware · Bouncy Castle · Erlang/OTP</div>
           </div>
@@ -1510,7 +1519,7 @@
         <h3 class="card-title">Why TLS 1.3 Removed RSA Key Exchange Entirely</h3>
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
           <li><strong style="color: var(--color-text);">No forward secrecy:</strong> RSA key exchange uses the server's long-term private key to wrap the session key. Compromise of the private key retroactively decrypts all past traffic.</li>
-          <li><strong style="color: var(--color-text);">Bleichenbacher variants:</strong> ROBOT (2017) found 8 major TLS implementations still vulnerable 19 years after the original paper. The oracle is hard to eliminate from real implementations.</li>
+          <li><strong style="color: var(--color-text);">Bleichenbacher variants:</strong> ROBOT (2017) reported vulnerable products from at least eight vendors and open source projects still vulnerable 19 years after the original paper, and the disclosure table has since reached 21 affected vendors and products. The oracle is hard to eliminate from real implementations.</li>
           <li><strong style="color: var(--color-text);">TLS 1.3 fix:</strong> RSA key exchange (RSA_PSK, RSA) removed. Only ephemeral Diffie-Hellman (ECDHE) allowed — provides forward secrecy by design.</li>
           <li><strong style="color: var(--color-text);">PKCS#1 v1.5 encryption:</strong> RFC 8017 explicitly marks RSA-PKCS1_V1_5 encryption as legacy. Use RSA-OAEP for any new RSA encryption.</li>
         </ul>
