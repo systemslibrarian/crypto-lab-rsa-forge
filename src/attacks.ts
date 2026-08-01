@@ -762,6 +762,15 @@ async function bbRun(humanOracle: boolean): Promise<void> {
   let queries    = 0;
   let iterations = 0;
 
+  // The live interval set. Declared up here (rather than inside the try block)
+  // so the periodic progress repaint fired from q() can show the interval the
+  // search has ACTUALLY reached. It used to be handed a literal [[2B, 3B-1]],
+  // which meant that every 500 queries the shrinking bar and the "interval size
+  // (bits)" readout snapped back to the full starting window regardless of how
+  // far the attack had narrowed — a progress display detached from the search
+  // driving it.
+  let intervals: [bigint, bigint][] = [[B2, B3 - 1n]];
+
   const logEntry = (msg: string) => {
     const div = document.createElement('div');
     div.style.color = 'var(--c-text-muted)';
@@ -807,7 +816,7 @@ async function bbRun(humanOracle: boolean): Promise<void> {
     }
 
     if (queryCount % YIELD_EVERY === 0) {
-      updateStats(queries, iterations, B2, B3, [[B2, B3 - 1n]]); // placeholder
+      updateStats(queries, iterations, B2, B3, intervals);
       await yieldToUI();
     }
     return truth;
@@ -893,8 +902,7 @@ async function bbRun(humanOracle: boolean): Promise<void> {
     logEntry(`Found s₁ = ${s} after ${queries.toLocaleString()} queries.`);
     iterations++;
 
-    let intervals: [bigint, bigint][] = [[B2, B3 - 1n]];
-    intervals = narrowIntervals(intervals, s);
+    intervals = narrowIntervals([[B2, B3 - 1n]], s);
     updateStats(queries, iterations, B2, B3, intervals);
 
     /* ── Steps 2 & 3: Narrow until single point ── */
@@ -905,12 +913,30 @@ async function bbRun(humanOracle: boolean): Promise<void> {
         break;
       }
 
+      // Every "conformant" answer is a constraint; a WRONG one (the human-oracle
+      // mode lets you give one) can contradict the constraints already collected
+      // and leave no interval at all. Say so rather than dereferencing intervals[0].
+      if (intervals.length === 0) {
+        logEntry('✗ No candidate intervals remain — the constraints contradict each other.');
+        announceUrgent(
+          'Attack failed: the oracle answers were inconsistent, so no plaintext satisfies them. ' +
+          'That is what one wrong answer does to an adaptive attack.',
+        );
+        break;
+      }
+
       if (intervals.length === 1 && intervals[0][0] === intervals[0][1]) {
-        // Solution found!
+        // Candidate found. Do NOT call it a success yet — prove it by
+        // re-encrypting under the public key and checking mᵉ mod n == c.
         const m = intervals[0][0];
-        showRecovery(m, k);
-        logEntry(`✓ Solution found after ${queries.toLocaleString()} queries, ${iterations} iterations.`);
-        announceUrgent(`Bleichenbacher attack succeeded. Recovered plaintext after ${queries.toLocaleString()} oracle queries.`);
+        const proven = showRecovery(m, k);
+        if (proven) {
+          logEntry(`✓ Solution found and verified (mᵉ mod n == c) after ${queries.toLocaleString()} queries, ${iterations} iterations.`);
+          announceUrgent(`Bleichenbacher attack succeeded. Recovered plaintext verified against the ciphertext after ${queries.toLocaleString()} oracle queries.`);
+        } else {
+          logEntry(`✗ Interval collapsed after ${queries.toLocaleString()} queries, but mᵉ mod n ≠ c — the candidate is NOT the plaintext.`);
+          announceUrgent('Attack ended on a value that does not re-encrypt to the ciphertext. It is not the plaintext.');
+        }
         break;
       }
 
@@ -1014,15 +1040,34 @@ function updateByteReveal(a: bigint, b: bigint, k: number): void {
   }
 }
 
-function showRecovery(m: bigint, k: number): void {
+/**
+ * Render the recovered value, and prove it before calling it recovered.
+ *
+ * The interval collapsing to a single point only says the oracle answers admit
+ * exactly one candidate. It does not say that candidate is the plaintext — a
+ * wrong answer in human-oracle mode narrows to a single WRONG value just as
+ * neatly. So re-encrypt the candidate under the public key and compare against
+ * the ciphertext the attack was handed. That check uses no private material,
+ * and unlike everything above it, it can fail.
+ *
+ * Returns whether mᵉ mod n == c, so the caller reports the outcome it measured
+ * instead of the outcome it expected.
+ */
+function showRecovery(m: bigint, k: number): boolean {
+  const proven = modPow(m, bb.e, bb.n) === bb.c;
+
   const em = bigintToBytes(m, k);
   const unpadded = pkcs1v15Unpad(em);
   const hex = bigintToHex(m);
 
-  let text = `Recovered (raw bigint): 0x${hex}`;
-  if (unpadded) {
+  let text: string;
+  if (!proven) {
+    text = `Candidate NOT verified — mᵉ mod n ≠ c. Raw bigint: 0x${hex}`;
+  } else if (unpadded) {
     const str = new TextDecoder().decode(unpadded);
-    text = `Recovered plaintext: "${str}" (after PKCS#1 v1.5 unpadding)`;
+    text = `Recovered plaintext: "${str}" (after PKCS#1 v1.5 unpadding, verified mᵉ mod n == c)`;
+  } else {
+    text = `Recovered (raw bigint, verified mᵉ mod n == c): 0x${hex}`;
   }
 
   const textEl = document.getElementById('bb-recovered-text') as HTMLElement;
@@ -1034,16 +1079,21 @@ function showRecovery(m: bigint, k: number): void {
   const wj = document.getElementById('bb-whatjust-text');
   if (wj) {
     const recoveredMsg = unpadded ? new TextDecoder().decode(unpadded) : null;
-    wj.textContent =
-      `You decrypted the ciphertext${recoveredMsg ? ` back to "${recoveredMsg}"` : ''} while only ever learning ` +
-      `one bit per query: “do the first two bytes equal 0x00 0x02?” Each multiply-by-sᵉ turned the hidden ` +
-      `plaintext into m×s (the homomorphic lever above), and every “conformant” answer proved m×s fell inside the ` +
-      `padding window [2B, 3B−1], squeezing the interval [a, b] around m until only one value remained. No private ` +
-      `key was used — just a leaky padding check. OAEP’s all-or-nothing decoding removes that one-bit leak entirely.`;
+    wj.textContent = proven
+      ? `You decrypted the ciphertext${recoveredMsg ? ` back to "${recoveredMsg}"` : ''} while only ever learning ` +
+        `one bit per query: “do the first two bytes equal 0x00 0x02?” Each multiply-by-sᵉ turned the hidden ` +
+        `plaintext into m×s (the homomorphic lever above), and every “conformant” answer proved m×s fell inside the ` +
+        `padding window [2B, 3B−1], squeezing the interval [a, b] around m until only one value remained. No private ` +
+        `key was used — just a leaky padding check. OAEP’s all-or-nothing decoding removes that one-bit leak entirely.`
+      : `The interval collapsed to a single value, but re-encrypting it does not reproduce the ciphertext, so it is ` +
+        `NOT the plaintext. That is what a wrong oracle answer does to an adaptive attack: every later step trusts ` +
+        `the earlier ones, so one bad bit steers the search into a region the true plaintext was never in — and the ` +
+        `attack still terminates, confidently, on the wrong number. Only re-encryption catches it.`;
   }
 
   show('bb-recovered');
   setText('bb-interval-size', '0');
+  return proven;
 }
 
 /* ── Helpers ────────────────────────────────────────────────── */

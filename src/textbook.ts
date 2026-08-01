@@ -171,9 +171,11 @@ export function isqrt(n: bigint): bigint {
 
 /**
  * Factor a semiprime n = p·q by real trial division, returning [p, q, trials].
- * Honest brute force: divides by 2 then every odd number up to √n. Fast for the
- * ~32-bit demo modulus (√n ≈ 2^16, so ≤ ~32k trials), infeasible for real keys.
- * `budget` caps the work so a mistakenly-large n can't hang the UI.
+ * Honest brute force: divides by 2 then every odd number up to √n. The factoring
+ * wall feeds it a fresh ~40-bit modulus (see newFactorTarget), so √n ≈ 2^20 and
+ * the loop runs a few hundred thousand trials — still a couple of milliseconds,
+ * and hopelessly infeasible for real keys. `budget` caps the work so a
+ * mistakenly-large n can't hang the UI.
  */
 export function trialFactor(
   n: bigint,
@@ -352,12 +354,17 @@ function generateKey(primeBits: number, btn: HTMLButtonElement): void {
       setText('tb-e',   kp.e.toString(10));
       setText('tb-d',   kp.d.toString(10));
 
-      // Verify: e*d mod phi(n) = 1
+      // Verify: e*d mod phi(n) = 1. The tick mark is DERIVED from the check —
+      // an earlier version appended "✓" unconditionally, so a broken modInverse
+      // would still have rendered "= 42 ✓" next to a wrong value.
       const check = kp.e * kp.d % kp.phi;
+      const keyOk = check === 1n;
       const verifyEl = document.getElementById('tb-verify');
       if (verifyEl) {
-        verifyEl.textContent =
-          `e × d mod φ(n) = ${kp.e} × ${kp.d} mod φ(n) = ${check} ✓`;
+        verifyEl.textContent = keyOk
+          ? `e × d mod φ(n) = ${kp.e} × ${kp.d} mod φ(n) = 1 ✓ — d really is e's inverse`
+          : `e × d mod φ(n) = ${kp.e} × ${kp.d} mod φ(n) = ${check} ✗ — expected 1; this key is broken`;
+        verifyEl.style.color = keyOk ? '' : 'var(--c-danger)';
       }
 
       show('tb-params'); show('tb-crypto-card');

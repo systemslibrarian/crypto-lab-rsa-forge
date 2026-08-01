@@ -211,7 +211,21 @@ export function bytesToBigint(bytes: Uint8Array): bigint {
   return result;
 }
 
-/** Ceiling integer division. */
+/**
+ * Ceiling integer division, correct for negative numerators.
+ *
+ * The obvious `(a + b - 1n) / b` is wrong when `a` is a negative multiple of
+ * `b`: BigInt division truncates toward zero, so ceilDiv(-3n, 3n) returned 0
+ * instead of -1. Bleichenbacher's Step 3 computes
+ * `rMin = ceilDiv(a*s - 3B + 1, n)`, which is non-negative for the moduli this
+ * demo uses, so the bug was latent rather than live — but the interval search
+ * depends on rMin being exact, and a wrong rMin silently drops a candidate
+ * interval. Compute the true ceiling instead of relying on the inputs.
+ */
 export function ceilDiv(a: bigint, b: bigint): bigint {
-  return (a + b - 1n) / b;
+  const q = a / b;          // truncates toward zero
+  const r = a % b;          // same sign as a
+  // Round up only when the division was inexact AND the exact quotient is > q,
+  // i.e. when the remainder has the same sign as the divisor.
+  return r !== 0n && ((r > 0n) === (b > 0n)) ? q + 1n : q;
 }
