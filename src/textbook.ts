@@ -252,14 +252,19 @@ let tbCiphertext: bigint | null = null;
 
 export function initTextbookPanel(): void {
   const btnSmall = document.getElementById('tb-gen-small') as HTMLButtonElement;
-  const btn2048  = document.getElementById('tb-gen-2048')  as HTMLButtonElement;
+  const btnLarge = document.getElementById('tb-gen-large') as HTMLButtonElement;
   const btnEncrypt    = document.getElementById('tb-encrypt')    as HTMLButtonElement;
   const btnDecrypt    = document.getElementById('tb-decrypt')    as HTMLButtonElement;
   const btnDeterminism = document.getElementById('tb-determinism') as HTMLButtonElement;
   const btnFactor     = document.getElementById('tb-factor-run')   as HTMLButtonElement | null;
 
+  // Both sizes are teaching sizes: generateKey() takes PRIME bits, so 32 → a
+  // 64-bit modulus and 256 → a 512-bit modulus. The button labels state the
+  // prime size, matching what the aria-live announcement reports for kp.bits.
+  // Do not raise these — keygen here is naive BigInt Miller-Rabin and would
+  // block the main thread for a long time at production sizes.
   btnSmall.addEventListener('click', () => generateKey(32,  btnSmall));
-  btn2048.addEventListener('click',  () => generateKey(256, btn2048));
+  btnLarge.addEventListener('click', () => generateKey(256, btnLarge));
 
   btnEncrypt.addEventListener('click', encryptMessage);
   btnDecrypt.addEventListener('click', decryptMessage);

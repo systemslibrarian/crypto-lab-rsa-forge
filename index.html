@@ -277,7 +277,10 @@
         <h3 class="card-title">Step 1 — Generate RSA Key Parameters</h3>
         <p class="card-description">
           Generate real prime numbers p and q, then compute all RSA parameters step by step.
-          Use small primes (~32-bit) for visual clarity, or 2048-bit for real cryptographic strength.
+          Use small primes (~32-bit) for visual clarity, or 256-bit primes (a 512-bit modulus) to see
+          the numbers grow. Both are teaching sizes: this panel's key generation is naive BigInt
+          Miller-Rabin, not production keygen. Real 2048/4096-bit RSA lives in the OAEP and PSS
+          panels, where WebCrypto generates the keys.
           The chain below turns the two secret primes into a public lock (n, e) and a private key (d) via
           <span class="gloss" tabindex="0" role="button" aria-expanded="false"
                 aria-describedby="gloss-body" data-gloss="phi">φ(n)</span>, and the whole point of
@@ -289,8 +292,8 @@
           <button id="tb-gen-small" class="btn btn-primary" aria-label="Generate small RSA key using 32-bit primes for visualization">
             Generate Small Key (32-bit primes)
           </button>
-          <button id="tb-gen-2048" class="btn btn-secondary" aria-label="Generate 2048-bit RSA key pair using real cryptographic parameters">
-            Generate 2048-bit Key
+          <button id="tb-gen-large" class="btn btn-secondary" aria-label="Generate larger RSA key using 256-bit primes, producing a 512-bit modulus">
+            Generate Larger Key (256-bit primes)
           </button>
         </div>
         <div id="tb-keygen-status" role="status" aria-live="polite" class="sr-only"></div>
