@@ -45,6 +45,15 @@
   --c-bg-card:     #141f33;
   --c-border:      #243047;
   --c-border-sub:  #111d30;
+  /* Control boundaries only (WCAG 2.1 SC 1.4.11). .form-input / .form-textarea
+     are filled with --c-bg, which is 1.32:1 against --c-bg-card and 1.10:1
+     against --c-bg-elevated, so the border is the only thing delineating the
+     field. --c-border itself was 1.31:1 at best. #63708c keeps the same
+     navy-slate hue and clears 3:1 on every surface a field sits on: 3.82:1 on
+     --c-bg, 3.50:1 on --c-bg-elevated, 3.32:1 on --c-bg-card (worst case),
+     3.91:1 on --c-code-bg, 3.71:1 on --c-nav-bg. --c-border is left unchanged
+     for decorative rules — card outlines, dividers, table rules. */
+  --c-border-strong: #63708c;
 
   --c-text:        #dde6f0;
   --c-text-muted:  #8ba3c0;
@@ -78,6 +87,11 @@
   --c-bg-card:     #ffffff;
   --c-border:      #d8e2ef;
   --c-border-sub:  #eaf0f8;
+  /* Light-theme control boundary (WCAG 2.1 SC 1.4.11) — same reasoning as dark.
+     #79839a is --c-border's own pale blue, darkened: 3.80:1 on --c-bg-card /
+     --c-bg-elevated (#ffffff), 3.54:1 on --c-bg, 3.31:1 on --c-code-bg,
+     3.26:1 on --c-header-bg (#e8eef7, the worst case). */
+  --c-border-strong: #79839a;
 
   --c-text:        #1a2233;
   --c-text-muted:  #445573;
@@ -505,7 +519,8 @@ main {
   width: 100%;
   padding: 10px var(--space-3);
   background: var(--c-bg);
-  border: 2px solid var(--c-border);
+  /* Load-bearing control boundary — see --c-border-strong (WCAG 2.1 SC 1.4.11). */
+  border: 2px solid var(--c-border-strong);
   border-radius: var(--radius-lg);
   color: var(--c-text);
   font-size: var(--text-base);
