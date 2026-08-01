@@ -225,7 +225,6 @@ img, svg { display: block; max-width: 100%; }
   color: var(--c-text-muted);
 }
 
-/* BEGIN cl-hero standard — managed, keep in sync across fleet */
 .cl-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:clamp(1rem,4vw,3rem);flex-wrap:wrap;margin:clamp(1rem,3vw,2rem) 0 1.5rem;}
 .cl-hero-main{flex:1 1 22rem;min-width:min(100%,20rem);}
 .cl-hero-title{margin:0;font-size:clamp(1.6rem,3.8vw,2.7rem);font-weight:700;line-height:1.1;letter-spacing:.01em;color:var(--c-text);}
@@ -235,7 +234,12 @@ img, svg { display: block; max-width: 100%; }
 .cl-hero-why-label{display:block;font-size:.68rem;font-weight:700;letter-spacing:.14em;color:var(--c-text);}
 .cl-hero-why-text{margin:.35rem 0 0;font-size:.95rem;line-height:1.5;color:var(--c-text);}
 @media (max-width:640px){.cl-hero{flex-direction:column;}.cl-hero-why{flex-basis:auto;width:100%;}}
-/* END cl-hero standard */
+
+/* Mobile: in the column layout the 22rem flex-basis becomes a minimum
+   HEIGHT, padding dead space above the fold. Reset it. */
+@media (max-width: 640px) {
+  .cl-hero-main { flex-basis: auto; min-width: 0; }
+}
 
 /* Theme toggle — circular icon-only button, min 44×44 tap target */
 .theme-toggle {
@@ -512,6 +516,10 @@ main {
 .form-textarea { resize: vertical; min-height: 80px; }
 .form-input:focus,
 .form-textarea:focus { border-color: var(--c-primary); outline: none; }
+/* WCAG 2.4.7 — the rule above out-specifies the global :focus-visible ring, so
+   restore a real focus indicator for keyboard users. */
+.form-input:focus-visible,
+.form-textarea:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
 .form-input::placeholder,
 .form-textarea::placeholder { color: var(--c-text-faint); }
 
