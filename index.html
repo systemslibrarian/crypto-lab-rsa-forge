@@ -621,7 +621,7 @@
             aria-describedby="oaep-plaintext-hint"
             rows="3">Hello, RSA-OAEP!</textarea>
           <div id="oaep-plaintext-hint" class="step-desc" style="margin-top: 0.25rem;">
-            Max 190 bytes for 2048-bit key with SHA-256 (214 bytes for 4096-bit).
+            Max 190 bytes for 2048-bit key with SHA-256 (446 bytes for 4096-bit).
           </div>
         </div>
         <div class="button-group">
@@ -1154,8 +1154,8 @@
           </div>
           <div class="cve-card">
             <div>
-              <span class="cve-card-id">CVE-2012-4929</span>
-              <span class="cve-card-year">2012</span>
+              <span class="cve-card-id">CVE-2008-0166</span>
+              <span class="cve-card-year">2008</span>
             </div>
             <div class="cve-card-title">Debian weak RSA keys</div>
             <div class="cve-card-text">
@@ -1171,8 +1171,8 @@
             </div>
             <div class="cve-card-title">"Mining Your Ps and Qs"</div>
             <div class="cve-card-text">
-              USENIX Security scan factored 0.5% of TLS and 1% of SSH public keys by computing GCDs of
-              shared prime factors — a direct cousin of small-exponent/CRT recovery.
+              USENIX Security scan recovered private keys for 0.5% of TLS hosts and 0.03% of SSH hosts by
+              computing GCDs of shared prime factors — a direct cousin of small-exponent/CRT recovery.
             </div>
             <div class="cve-card-vendors">TLS · SSH · embedded routers · printers</div>
           </div>
@@ -1185,7 +1185,7 @@
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
           <li><strong style="color: var(--color-text);">Randomization:</strong> With OAEP, each recipient receives a <em>different</em> padded message. Even with the same underlying plaintext, the padded m values differ, so m³ values are not related by CRT.</li>
           <li><strong style="color: var(--color-text);">Structure:</strong> The OAEP padding expands the message to fill the full modulus, so m is always close to n in size — m³ mod n wraps around the modulus multiple times.</li>
-          <li><strong style="color: var(--color-text);">Minimum key size:</strong> NIST SP 800-57 recommends e=65537 for all production RSA. Small e values (e=3, e=17) must only ever be used with proper padding.</li>
+          <li><strong style="color: var(--color-text);">Public exponent:</strong> FIPS 186-5 requires 2<sup>16</sup> &lt; e &lt; 2<sup>256</sup>, and e=65537 is the universal choice for production RSA. Small e values (e=3, e=17) must only ever be used with proper padding.</li>
         </ul>
       </div>
     </section>
@@ -1699,7 +1699,7 @@
       <div class="card">
         <h3 class="card-title">Shor's Algorithm — Why RSA Will Break</h3>
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
-          <li><strong style="color: var(--color-text);">Classical factoring:</strong> Best classical algorithm (GNFS) runs in sub-exponential time — 2<sup>64</sup> operations for RSA-2048. Secure against classical computers.</li>
+          <li><strong style="color: var(--color-text);">Classical factoring:</strong> Best classical algorithm (GNFS) runs in sub-exponential time — about 2<sup>112</sup> operations for RSA-2048. Secure against classical computers.</li>
           <li><strong style="color: var(--color-text);">Shor's algorithm:</strong> Reduces factoring to order-finding in polynomial time. Requires a fault-tolerant quantum computer with ~4,000 logical qubits for RSA-2048.</li>
           <li><strong style="color: var(--color-text);">2026 timeline:</strong> No quantum computer currently capable of breaking RSA-2048. But "harvest now, decrypt later" — adversaries store encrypted traffic today to decrypt with future hardware.</li>
           <li><strong style="color: var(--color-text);">Migration urgency:</strong> NIST published FIPS 203/204/205 in August 2024. Systems with &gt;10-year security requirements should migrate now.</li>
