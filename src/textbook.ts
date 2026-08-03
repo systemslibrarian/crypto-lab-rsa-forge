@@ -292,6 +292,10 @@ function newFactorTarget(): void {
   const kp = generateRsaKeyPair(40, 65537n); // n ≈ 40 bits
   factorN = kp.n;
   setText('tb-factor-n', kp.n.toString(10));
+  // A new target retires the previous verdict in the same breath. Leaving the
+  // old "Factored! n = p × q" on screen beside a modulus it does not factor
+  // would be a verdict outliving its input — briefly, but the two lines sit one
+  // above the other, so "briefly" is long enough to be read.
   hide('tb-factor-result');
 }
 
@@ -300,7 +304,19 @@ function runFactorWall(): void {
   const btn = document.getElementById('tb-factor-run') as HTMLButtonElement;
   const foundEl  = document.getElementById('tb-factor-found')  as HTMLElement;
   const detailEl = document.getElementById('tb-factor-detail') as HTMLElement;
-  if (factorN === null) newFactorTarget();
+  const resultEl = document.getElementById('tb-factor-result') as HTMLElement;
+
+  // Each press factors the modulus currently on screen. If a result from the
+  // previous press is still up, draw a FRESH target first — which also retires
+  // that result — so the n displayed above and the factors reported below always
+  // describe the same number.
+  //
+  // The regeneration used to happen at the END of the run instead, and
+  // newFactorTarget() hid the result region as part of drawing a new target —
+  // so every successful run wrote "Factored! n = p × q" into the DOM and then
+  // immediately re-hid it. Pressing the button appeared to do nothing, and the
+  // headline moment of the factoring wall was unreachable in the UI.
+  if (factorN === null || !resultEl.hidden) newFactorTarget();
 
   const lbl = btn.getAttribute('aria-label') ?? '';
   setLoading(btn, true);
@@ -322,13 +338,10 @@ function runFactorWall(): void {
           `Trial division only had to reach √n ≈ ${isqrt(n).toLocaleString()}. Now look right: for a ` +
           `2048-bit n, √n has ~308 digits, so that same loop never finishes. Same operation — the size of n is the whole defense.`;
         announce(`Factored n into ${res.p} and ${res.q} in ${ms < 1 ? 'under 1' : ms.toFixed(1)} milliseconds.`);
-        // Fresh target so pressing again re-runs on a new n (still instant).
-        newFactorTarget();
       } else {
         foundEl.textContent = 'No factor found within budget.';
         detailEl.textContent = 'Unexpected for a tiny modulus — press again to regenerate n and retry.';
         announce('No factor found within budget.');
-        newFactorTarget();
       }
     } finally {
       setLoading(btn, false, lbl);

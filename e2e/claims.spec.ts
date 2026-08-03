@@ -232,7 +232,7 @@ test('determinism verdict: two encryptions of one message are byte-identical', a
   // The verdict is the point of the panel: identical is the FAILURE, so it is
   // rendered in the danger colour.
   await expect(page.locator('#tb-ct-match')).toHaveText('✓ YES — always identical');
-  await expect(page.locator('#tb-ct-match')).toHaveCSS('color', 'rgb(255, 107, 107)');
+  await expect(page.locator('#tb-ct-match')).toHaveCSS('color', 'rgb(248, 113, 113)'); // --c-danger
   await expect(page.locator('#aria-live')).toContainText(
     'textbook RSA is deterministic and insecure',
   );
@@ -241,37 +241,55 @@ test('determinism verdict: two encryptions of one message are byte-identical', a
 test('factoring wall recovers the two real primes of the modulus it published', async ({ page }) => {
   await load(page);
   await expect(page.locator('#tb-factor-card')).toBeVisible();
+  // Nothing is claimed until the user asks.
+  await expect(page.locator('#tb-factor-result')).toBeHidden();
 
-  const nBefore = bigOf(await textOf(page, '#tb-factor-n'));
-  expect(nBefore.toString(2).length).toBeGreaterThan(30);
+  /** Press "Factor", read back the verdict, and check it against the n on screen. */
+  const factorOnce = async (prevFound: string): Promise<bigint> => {
+    await page.locator('#tb-factor-run').click();
+    const n = bigOf(await textOf(page, '#tb-factor-n'));
+    expect(n.toString(2).length).toBeGreaterThan(30);
 
-  await page.locator('#tb-factor-run').click();
-  await expect(page.locator('#tb-factor-result')).toBeVisible();
+    // Regression guard: the result must be VISIBLE, not written and re-hidden.
+    await expect(page.locator('#tb-factor-result')).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => textOf(page, '#tb-factor-found'), { timeout: 30_000 }).not.toBe(
+      prevFound,
+    );
 
-  const found = await textOf(page, '#tb-factor-found');
-  const m = found.match(/^Factored! n = (\d+) × (\d+)$/);
-  expect(m, `unexpected verdict: ${found}`).not.toBeNull();
-  const p = BigInt(m![1]);
-  const q = BigInt(m![2]);
+    const found = await textOf(page, '#tb-factor-found');
+    expect(found).toContain('Factored!');
+    const m = found.match(/^Factored! n = (\d+) × (\d+)$/);
+    expect(m, `unexpected verdict: ${found}`).not.toBeNull();
+    const p = BigInt(m![1]);
+    const q = BigInt(m![2]);
 
-  // The two factors it claims must multiply back to the n it was shown.
-  expect(p * q).toBe(nBefore);
-  expect(p).toBeGreaterThan(1n);
-  expect(q).toBeGreaterThan(1n);
-  // Trial division walks upward from 3, so the reported p is the smaller factor.
-  expect(p <= q).toBe(true);
+    // The two factors it claims must multiply back to the n it was shown, and
+    // that n must still be the one on screen — the readout and the verdict have
+    // to describe the same number.
+    expect(p * q).toBe(n);
+    expect(bigOf(await textOf(page, '#tb-factor-n'))).toBe(n);
+    expect(p).toBeGreaterThan(1n);
+    expect(q).toBeGreaterThan(1n);
+    // Trial division walks upward from 3, so the reported p is the smaller factor.
+    expect(p <= q).toBe(true);
 
-  const detail = await textOf(page, '#tb-factor-detail');
-  // The trial count must be consistent with where the divisor was found:
-  // trials counts the /2 probe plus every odd d from 3 up to p.
-  const trials = numOf(detail);
-  expect(trials).toBe(Number((p - 3n) / 2n) + 2);
-  expect(detail).toContain('recomputes φ(n) and the private key d');
-  expect(detail).toContain('the size of n is the whole defense');
+    const detail = await textOf(page, '#tb-factor-detail');
+    // The trial count must be consistent with where the divisor was found:
+    // trials counts the /2 probe plus every odd d from 3 up to and including p.
+    const trials = numOf(detail);
+    expect(trials).toBe(Number((p - 3n) / 2n) + 2);
+    // And the wall it contrasts against: the search only had to reach floor(sqrt(n)).
+    const sqrtClaim = BigInt(detail.match(/√n ≈ ([\d,]+)/)![1].replace(/,/g, ''));
+    expect(sqrtClaim * sqrtClaim <= n && (sqrtClaim + 1n) ** 2n > n).toBe(true);
+    expect(detail).toContain('recomputes φ(n) and the private key d');
+    expect(detail).toContain('the size of n is the whole defense');
+    return n;
+  };
 
-  // Pressing again must work on a FRESH modulus, not the one just broken.
-  const nAfter = bigOf(await textOf(page, '#tb-factor-n'));
-  expect(nAfter).not.toBe(nBefore);
+  const first = await factorOnce('—');
+  // Pressing again must draw a FRESH modulus and factor that one instead.
+  const second = await factorOnce(await textOf(page, '#tb-factor-found'));
+  expect(second).not.toBe(first);
 });
 
 test('textbook-vs-OAEP contrast: zero bytes differ for textbook, nearly all for OAEP', async ({
@@ -279,6 +297,9 @@ test('textbook-vs-OAEP contrast: zero bytes differ for textbook, nearly all for 
 }) => {
   test.setTimeout(90_000);
   await load(page);
+  // Results are not on screen before the run.
+  await expect(page.locator('#det-contrast-grid')).toBeHidden();
+
   await page.locator('#det-run').click();
   await expect(page.locator('#det-contrast-grid')).toBeVisible({ timeout: 60_000 });
 
@@ -792,24 +813,38 @@ test('one wrong oracle answer derails the attack and the page admits it', async 
   const correct = numOf(await textOf(page, '#bb-om-correct'));
   expect(decisions).toBe(correct + 1);
 
-  // Hand the rest back to the machine and watch it terminate WRONG.
-  await page.locator('#bb-om-autocomplete').click();
-  await expect(page.locator('#bb-oracle-mode')).toBeHidden();
+  // Keep answering "conformant" to everything. The first lie already poisoned
+  // the constraint set; continuing simply drives the run to its conclusion
+  // without waiting on the machine's own six-figure query budget.
+  for (let i = 0; i < 600; i++) {
+    if (!(await page.locator('#bb-abort').isEnabled())) break;
+    await page.locator('#bb-om-yes').click();
+  }
+  // The run must END — on a failure, not on a hang.
+  await expect(page.locator('#bb-abort')).toBeDisabled({ timeout: 60_000 });
 
-  await expect(async () => {
-    const log = await textOf(page, '#bb-attack-log');
-    const recovered = await textOf(page, '#bb-recovered-text');
-    const failed =
-      log.includes('No candidate intervals remain') ||
-      log.includes('mᵉ mod n ≠ c') ||
-      log.includes('Aborted/limited') ||
-      recovered.includes('NOT verified');
-    expect(failed, `attack did not report failure. log=${log} recovered=${recovered}`).toBe(true);
-  }).toPass({ timeout: 240_000, intervals: [500] });
+  const log = await textOf(page, '#bb-attack-log');
+  const recovered = await textOf(page, '#bb-recovered-text');
+  const failed =
+    log.includes('No candidate intervals remain') ||
+    log.includes('mᵉ mod n ≠ c') ||
+    log.includes('Aborted/limited') ||
+    recovered.includes('NOT verified');
+  expect(failed, `attack did not report failure. log=${log} recovered=${recovered}`).toBe(true);
 
   // It must never claim a verified recovery off a poisoned oracle.
+  const finalLog = await textOf(page, '#bb-attack-log');
   const recoveredText = await textOf(page, '#bb-recovered-text');
   expect(recoveredText).not.toContain('verified mᵉ mod n == c');
+  expect(finalLog).not.toContain('✓ Solution found and verified');
+  if (finalLog.includes('No candidate intervals remain')) {
+    // Constraints contradicted each other: no result box at all, plus a spoken
+    // explanation of what a single wrong bit did.
+    await expect(page.locator('#bb-recovered')).toBeHidden();
+    await expect(page.locator('#aria-live-assertive')).toContainText(
+      'the oracle answers were inconsistent, so no plaintext satisfies them',
+    );
+  }
   if (recoveredText.includes('NOT verified')) {
     const m = hexOf(recoveredText.replace(/^.*0x/, ''));
     // The candidate really does not re-encrypt to the ciphertext.
@@ -838,6 +873,8 @@ test('hybrid benchmark: projection matches its own sample, and hybrid beats RSA-
   const hybridMs = numOf(await textOf(page, '#hybrid-hybrid-time'));
 
   // The headline: RSA-only for bulk data is the slow one, by a lot.
+  expect(hybridMs).toBeGreaterThan(0);
+  expect(aesMs).toBeGreaterThan(0);
   expect(rsaMs).toBeGreaterThan(hybridMs);
   expect(rsaMs).toBeGreaterThan(aesMs);
   expect(rsaMs / hybridMs).toBeGreaterThan(10);
@@ -850,9 +887,13 @@ test('hybrid benchmark: projection matches its own sample, and hybrid beats RSA-
   const perChunk = Number(note.match(/at ([\d.]+) ms each/)![1]);
   const sampled = Number(note.match(/sampled (\d+) chunks/)![1]);
   expect(sampled).toBe(32);
-  // The projection must be the sample times the chunk count, not a guess.
-  const expectedProjection = perChunk * chunks;
-  expect(Math.abs(rsaMs - expectedProjection) / expectedProjection).toBeLessThan(0.02);
+  expect(perChunk).toBeGreaterThan(0);
+  // The projection must be the published sample times the published chunk count,
+  // not an independent guess. The per-chunk figure is printed to 2 decimals and
+  // the projection is rounded to whole ms, so allow exactly that much slack and
+  // no more.
+  expect(rsaMs).toBeGreaterThanOrEqual((perChunk - 0.005) * chunks - 1);
+  expect(rsaMs).toBeLessThanOrEqual((perChunk + 0.005) * chunks + 1);
 
   // The prose repeats those numbers; they must be the same numbers.
   const takeaway = await textOf(page, '#hybrid-takeaway-text');
@@ -875,6 +916,31 @@ test('hybrid benchmark: projection matches its own sample, and hybrid beats RSA-
 /* ══════════════════════════════════════════════════════════════
    Navigation
    ══════════════════════════════════════════════════════════════ */
+
+test('no result region is painted before the run that fills it', async ({ page }) => {
+  await load(page);
+  // Regression guard. Author rules such as `.det-contrast-grid { display: grid }`
+  // outrank the UA `[hidden] { display: none }`, so six result regions used to
+  // render their "—" placeholders on first load and could never be hidden again.
+  const leaked = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('[hidden]'))
+      .filter((el) => getComputedStyle(el).display !== 'none')
+      .map((el) => el.id || el.className),
+  );
+  expect(leaked).toEqual([]);
+
+  // Spot-check the ones that leaked, across every panel.
+  for (const id of [
+    '#det-contrast-grid',
+    '#oaep-2048-timing',
+    '#oaep-4096-timing',
+    '#hastad-recipients',
+    '#hybrid-results',
+    '#hybrid-takeaway',
+  ]) {
+    await expect(page.locator(id)).toBeHidden();
+  }
+});
 
 test('each tab reveals exactly one panel', async ({ page }) => {
   await load(page);
