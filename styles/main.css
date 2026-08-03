@@ -4,6 +4,19 @@
    Base: 320px. Enhanced upward.
    ============================================================ */
 
+/* ── [hidden] must actually hide ────────────────────────────────
+   The UA rule is `[hidden] { display: none }`. Any AUTHOR rule that sets a
+   display — `.det-contrast-grid { display: grid }`, `.timing-display`,
+   `.recipient-grid`, `.hybrid-grid`, `.alert` — beats it regardless of
+   specificity, because author styles outrank the UA sheet. Six result regions
+   that ship with the `hidden` attribute were therefore painted on first load:
+   the textbook-vs-OAEP contrast grid, both OAEP timing panels, the Hastad
+   recipient grid, and the hybrid results/takeaway. Users saw empty byte rows
+   and "—" placeholders for results they had not run yet, and every hide() call
+   against those nodes was a no-op. Restore the attribute's meaning once, here,
+   rather than patching each class. ── */
+[hidden] { display: none !important; }
+
 /* ── Tokens ─────────────────────────────────────────────────── */
 :root {
   --space-1: 0.25rem;
