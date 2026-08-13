@@ -690,8 +690,13 @@ function bbManualQuery(): void {
 
   const resultSpan = document.createElement('span');
   resultSpan.className = conformant ? 'oracle-log-conformant' : 'oracle-log-non-conformant';
+  // No `aria-label` here. This is a role-less <span>, and `aria-label` on a
+  // role-less element is PROHIBITED — it is silently discarded by every AT and
+  // axe reports it under `incomplete`, never under `violations`, so it looked
+  // like an accessible name for as long as nobody asserted on that bucket. The
+  // textContent above already says exactly what the label said, and the whole
+  // log lives inside `#bb-oracle-result`, which is a real `role="status"`.
   resultSpan.textContent = conformant ? '✓ CONFORMANT' : '✗ NOT CONFORMANT';
-  resultSpan.setAttribute('aria-label', conformant ? 'Conformant' : 'Not conformant');
 
   entry.append(querySpan, resultSpan);
   log.prepend(entry); // newest first

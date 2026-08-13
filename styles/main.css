@@ -151,7 +151,12 @@ body {
   color: var(--c-text);
   background: var(--c-bg);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* NO `overflow-x: hidden` here. On `<body>` it PROPAGATES TO THE VIEWPORT, so
+     `documentElement.scrollWidth` can never exceed `clientWidth` and WCAG 1.4.10
+     becomes unfalsifiable: every reflow measurement on this page reported clean
+     because the measurement was disabled, not because the page reflowed. The
+     content it was hiding is handled where it belongs — every wide table and
+     byte grid is inside its own `overflow-x: auto` scroller. */
 }
 
 img, svg { display: block; max-width: 100%; }
@@ -491,10 +496,16 @@ main {
 }
 [data-theme="dark"] .btn-secondary:hover { color: #09101f; }
 
+/* --c-border-strong, not --c-border. `--c-border` is the SURFACE divider — it
+   measures 1.25:1 against --c-bg-card and 1.31:1 against --c-bg-elevated — and a
+   ghost button has no fill, so its border is the ONLY thing that delineates it.
+   Three controls draw themselves this way (#tb-determinism, #bb-abort,
+   #bb-om-no) and all three dissolved into their panel under SC 1.4.11 while the
+   token written for exactly this job was applied to `.form-input` alone. */
 .btn-ghost {
   background: transparent;
   color: var(--c-text-muted);
-  border-color: var(--c-border);
+  border-color: var(--c-border-strong);
 }
 .btn-ghost:hover {
   background: var(--c-bg-elevated);
@@ -647,6 +658,12 @@ main {
   margin: var(--space-2) 0;
   overflow-x: auto;
 }
+/* `#tb-verify` is a `.math-formula` and it really does overflow: with a 512-bit
+   key its `e × d mod φ(n) = …` line is 1326px wide inside 1084px, so it becomes
+   a scrolling region with no focusable content — WCAG 2.1.1. It carries
+   `tabindex="0"` and `role="group"` in the markup for that reason, and 2.4.7
+   then requires the focus be visible. */
+.math-formula:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
 
 /* ── Params table ───────────────────────────────────────────── */
 .params-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
@@ -669,6 +686,7 @@ main {
 }
 
 /* ── Comparison table ───────────────────────────────────────── */
+.comparison-table-wrapper:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
 .comparison-table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--c-border);
@@ -1384,9 +1402,12 @@ footer {
 @media (min-width: 640px) {
   .config-picker { grid-template-columns: repeat(2, 1fr); }
 }
+/* Same correction as .btn-ghost: these two cards ARE buttons — the whole
+   "which config did you ship?" challenge is a pair of <button class="config-card">
+   — and their 2px edge was the surface divider at 1.25:1. */
 .config-card {
   background: var(--c-bg);
-  border: 2px solid var(--c-border);
+  border: 2px solid var(--c-border-strong);
   border-radius: var(--radius-xl);
   padding: var(--space-5);
   cursor: pointer;
