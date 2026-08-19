@@ -471,7 +471,25 @@ main {
   min-width: 44px;
   transition: filter var(--transition-fast), background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   text-decoration: none;
-  white-space: nowrap;
+  /* NOT `white-space: nowrap`. Several labels here are sentences — "Demonstrate
+     Same-Plaintext Attack", "Generate Demo Key + Conformant Ciphertext",
+     "Encrypt 1 MB — RSA-only vs AES vs Hybrid" — and none of them fits the
+     306px content column a 380px phone leaves inside `.card`. With `nowrap`
+     they could not fit, only spill, and they spilled two different ways
+     depending on the parent: `#tb-determinism` sits in a plain block, so the
+     BUTTON grew to 367px and pushed the document to a 404px scroll width;
+     `#bb-setup` and `#hybrid-run` sit in a `.button-group` flex line that
+     clamps them to 306px, so the button held its box and the LABEL rendered
+     outside it on both sides (centred text at left=-14, right=394).
+
+     Wrapping only engages where the label does not fit — shrink-to-fit still
+     takes the max-content width whenever there is room — so nothing at desktop
+     width changes; `text-align: center` keeps the second line under the first.
+     Measured in Chromium; the CI runner's `system-ui` is ~19% wider than
+     macOS's, which is why this reached 380px there and not here. */
+  white-space: normal;
+  text-align: center;
+  max-width: 100%;
   font-family: var(--font-sans);
 }
 .btn:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
