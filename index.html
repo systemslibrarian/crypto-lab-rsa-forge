@@ -73,6 +73,9 @@
      ships. The element stays in the DOM so the lab's theme JS keeps working. */
   body :is(#theme-toggle,#themeToggle,.theme-toggle,.theme-toggle-btn,[data-theme-toggle]){display:none!important}
   @media(max-width:560px){
+    /* Keep the demo tabs reachable on narrow screens. Two sticky bars at top:0
+       cause the shared header to cover the horizontally scrolled tab buttons. */
+    .cl-topbar{position:static}
     .cl-sub{display:none}
     .cl-btn span{display:none}
     .cl-btn svg{margin:0}
