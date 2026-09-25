@@ -94,10 +94,10 @@ export function initOracleWithoutFactoringPanel(): void {
     status.textContent = ok ? 'Verified' : 'Mismatch';
     box.className = ok ? 'result-box result-box-success' : 'result-box result-box-error';
     text.innerHTML = ok
-      ? `Verified: s^65537 mod N = t, with s = 0x${bigintToHex(result.root)}, t = 0x${bigintToHex(result.value)}, log₂(N) = ${result.bitLength}, and the key bit length is 1024. This is a real signature forgery on a real HSM key whose factors nobody knows.`
+      ? `Verified: s^65537 mod N = t, with s = 0x${bigintToHex(result.root)}, t = 0x${bigintToHex(result.value)}, log₂(N) = ${result.bitLength}, and the key bit length is 1024. §4.5 says the researchers generated the 1024-bit key outside the HSM and imported it; the attack used black-box HSM oracle responses and never needed the factors or private key. This button checks the published equation only; it does not rerun the number-field sieve or establish how s was derived.`
       : `Mismatch: s^65537 mod N ≠ t. Actual value: 0x${bigintToHex(check)}.`;
     show('nfs-forgery-box');
-    announce(ok ? '2026 §4 forgery verified against the paper’s HSM key.' : '2026 §4 forgery verification failed.');
+    announce(ok ? '2026 §4 equation verified against the paper’s published values.' : '2026 §4 forgery verification failed.');
   });
 
   toyBtn?.addEventListener('click', () => {
@@ -122,6 +122,7 @@ export function initOracleWithoutFactoringPanel(): void {
     forgedEl.textContent = `σ = σ₁σ₂ mod n = 0x${bigintToHex(forged)}`;
     claimEl.textContent = `σᵉ mod n = 0x${bigintToHex(claimed)} = m₁m₂ mod n`;
     noteEl.textContent = 'This is the malleability √eNFS exploits at scale (§3.1): raw RSA oracle answers on m₁ and m₂ yield a valid raw signature on m₁·m₂ without factoring.';
+    noteEl.textContent = 'This toy check is one ingredient of the delayed-target attack: it demonstrates the raw-RSA multiplicative malleability the authors exploit, not an implementation of √eNFS itself.';
     show('nfs-toy-result');
     announce('Toy raw-oracle malleability demonstration ran.');
   });
