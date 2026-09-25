@@ -1564,11 +1564,11 @@
           <span class="status-chip status-chip-warn">DELAYED-TARGET RSA</span>
         </div>
         <p class="panel-description">
-          Shea, Haller, Suhl, Heninger, and Thomé showed that a temporary raw-RSA oracle can be used to produce an e-th root for random targets <em>without ever factoring N</em> or recovering the private key.
-          This is the attack model in §1 and §2 of ePrint 2026/2131, with the precise oracle/games in Fig. 6 and the connection to the one-more RSA setting in §5.
+          Shea, Haller, Suhl, Heninger, and Thomé showed that a temporary raw-RSA oracle can be used to produce an e-th root for random targets <em>without factoring N</em> or recovering the private key.
+          This is the delayed-target RSA model in §1 and §2 of ePrint 2026/2131, with the precise oracle/games in Fig. 6 and the one-more RSA comparison in §5. The paper is explicit that this is not plain RSA inversion, not ordinary factoring, and not a general one-more RSA break.
         </p>
         <div class="citation">
-          <strong>Source of truth:</strong> Shea, Haller, Suhl, Heninger, Thomé. "Forging 1024-bit RSA signatures in nearly SNFS time." IACR ePrint 2026/2131. Background: Joux–Naccache–Thomé, ASIACRYPT 2007 / ePrint 2007/424. Code: <a href="https://github.com/ucsd-hacc/NSNFSSSFSFN" target="_blank" rel="noopener">ucsd-hacc/NSNFSSSFSFN</a>.
+          <strong>Source of truth:</strong> Shea, Haller, Suhl, Heninger, Thomé. "Forging 1024-bit RSA signatures in nearly SNFS time." IACR ePrint 2026/2131. Background: Joux–Naccache–Thomé, ASIACRYPT 2007 / ePrint 2007/424. Code: <a href="https://github.com/ucsd-hacc/NSNFSSSFSFN" target="_blank" rel="noopener">ucsd-hacc/NSNFSSSFSFN</a>. The §4.5 trip report states the key was generated outside the HSM and imported; the attack then used black-box HSM responses without needing the factors or private key.
         </div>
       </div>
 
@@ -1578,23 +1578,23 @@
           <div class="oracle-mode-card" style="padding:1rem;">
             <div class="oracle-mode-prompt"><strong>DT-RSA (the §1/§2 / Fig. 6 game)</strong></div>
             <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.2rem; margin: 0.75rem 0 0; font-size: 0.9375rem;">
-              <li>Phase 1: attacker knows (N, e) and queries a raw RSA oracle w ↦ w<sup>d</sup> mod N.</li>
-              <li>Phase 2: oracle access disappears; attacker receives a random target t and must produce t<sup>1/e</sup> mod N.</li>
-              <li>Forgery can be repeated offline for any target.</li>
-              <li>The private key and primes are not recovered; the paper's point is the <em>temporary ability to make e-th roots</em> for a chosen key without factoring.</li>
+              <li>Order of events: public key and precomputation first, then temporary access to a raw RSA signing oracle for approximately 4.07 billion oracle queries.</li>
+              <li>Oracle access ends; the attacker is then given a random target t and must produce t<sup>1/e</sup> mod N offline.</li>
+              <li>Forgery can be repeated offline for any target after the oracle window closes.</li>
+              <li>The private key and primes are not recovered; the paper's point is the <em>temporary ability to forge chosen targets</em> without factoring the modulus.</li>
             </ul>
           </div>
           <div class="oracle-mode-card" style="padding:1rem;">
             <div class="oracle-mode-prompt"><strong>OM-RSA (the older, stricter game)</strong></div>
             <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.2rem; margin: 0.75rem 0 0; font-size: 0.9375rem;">
               <li>One-more RSA is a different chosen-target/one-more inversion assumption used in blind-signature proofs.</li>
-              <li>In the paper's §5 discussion they show √eNFS solves DT-RSA, and that a straightforward adaptation for OM-RSA is much worse than GNFS.</li>
+              <li>In the paper's §5 discussion they show √eNFS solves DT-RSA, while a straightforward adaptation for OM-RSA is much worse than GNFS.</li>
               <li>Their point is precise: <em>√eNFS does not solve plain RSA, factoring, or (efficiently) one-more RSA</em>.</li>
             </ul>
           </div>
         </div>
         <div class="citation" style="margin-top: 1rem;">
-          <strong>Figure 6 / §1 / §2 / §5:</strong> the paper names this setting “delayed-target RSA” and explicitly separates it from the ordinary factoring task and the OM-RSA assumption. This is not “break RSA by factoring”; it is a temporary oracle-assisted forgery model that leaves N unbroken.
+          <strong>Figure 6 / §1 / §2 / §5:</strong> the paper names this setting “delayed-target RSA” and explicitly separates it from the ordinary factoring task and the OM-RSA assumption. This is not “break RSA by factoring”; it is a temporary oracle-assisted forgery model that leaves N unbroken. The measured 1024-bit computation is real; the paper's larger-key estimates are extrapolations and upper bounds, as §6 states.
         </div>
       </div>
 
@@ -1613,7 +1613,7 @@
       <div class="card">
         <h3 class="card-title">Pipeline: from precomputation to forgery</h3>
         <p class="card-description">
-          The attack pipeline matches Fig. 3: precomputation (polynomial selection, algebraic + extension sieving, all depending only on N and e) → oracle queries (rational, algebraic, extension) → individual forgery (descent, linear algebra mod e, e-th root in the number field).
+          The attack pipeline matches Fig. 3 and the timeline in Fig. 4: public key and precomputation first → temporary oracle access (approximately 4.07 billion raw-RSA queries) → oracle access ends → target arrives → offline forgery (descent, linear algebra mod e, e-th root in the number field).
         </p>
         <div class="step-grid" style="margin-top: 1rem;">
           <div class="step-item">
@@ -1642,7 +1642,7 @@
       <div class="card">
         <h3 class="card-title">LIVE VERIFICATION — real math from §4</h3>
         <p class="card-description">
-          The paper gives the exact public key and forgery example in §4. This is the 1024-bit HSM key they forged against; the attack target and root are printed verbatim from the paper.
+          The paper gives the exact public key and forgery example in §4. This is the 1024-bit HSM test key they forged against; §4.5 states the researchers generated the key outside the HSM and imported it. The button below verifies the published equation s<sup>65537</sup> mod N = t; it does not rerun the number-field sieve computation or independently establish how the paper derived s.
         </p>
         <div class="crypto-value-container" style="margin-top: 1rem;">
           <div class="crypto-value-label">e</div>
@@ -1698,17 +1698,17 @@
       <div class="card">
         <h3 class="card-title">Who is exposed? What is not.</h3>
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
-          <li><strong style="color: var(--color-text);">Exposed in practice:</strong> HSMs exposing raw RSA via PKCS#11 <code>CKM_RSA_X_509</code> with FIPS mode off. This was the paper's actual oracle: Thales Luna K6 and remote Luna S750. The key is extracted as a capability, not as bits.</li>
+          <li><strong style="color: var(--color-text);">Exposed in practice:</strong> HSM raw-operation configurations and blind-RSA deployments can create the kind of oracle the paper exploits, including PKCS#11 <code>CKM_RSA_X_509</code> behavior with FIPS mode off. This was the paper's actual oracle: Thales Luna K6 and remote Luna S750. That is a conditional exposure scenario, not proof that every RSA deployment is vulnerable.</li>
           <li><strong style="color: var(--color-text);">Also exposed:</strong> RSA blind signatures: RFC 9474 RSABSSA, Privacy Pass publicly-verifiable tokens, iCloud Private Relay, GNU Taler RSA-FDH.</li>
           <li><strong style="color: var(--color-text);">Bleichenbacher chaining:</strong> a PKCS#1 v1.5 padding oracle can be used to answer each raw query, so an attacker can maintain decryption ability after the bug is patched. This is the link back to the Bleichenbacher section above (§7.3).</li>
-          <li><strong style="color: var(--color-text);">Not exposed in practice:</strong> normal PKCS#1 v1.5 / PSS signing. Per §5.2, the padded (AMR) variant costs L(1/3, 6<sup>1/3</sup> ≈ 1.817) and was not implemented. The paper also states its results do not carry to ECDSA or Ed25519.</li>
+          <li><strong style="color: var(--color-text);">Not exposed by default:</strong> normal PKCS#1 v1.5 / PSS signing is not, by itself, the raw oracle this attack needs. The paper separately discusses the padded/AMR variant in §5.2, which is a distinct and more expensive setting; it does not imply that all padded RSA signing is categorically safe or categorically broken. The results also do not carry to ECDSA or Ed25519.</li>
         </ul>
       </div>
 
       <div class="card">
         <h3 class="card-title">Toy live piece: raw-oracle malleability at teaching size</h3>
         <p class="card-description">
-          This is not √eNFS. It is a tiny sanity check of the exact malleability the paper exploits at scale: if a raw RSA oracle signs m₁ and m₂, then it also implicitly signs m₁·m₂. Here the browser does only the textbook arithmetic the attack relies on.
+          This is not √eNFS. It is a tiny sanity check of one exact malleability ingredient the paper exploits at scale: if a raw RSA oracle signs m₁ and m₂, then it also implicitly signs m₁·m₂. Here the browser does only the textbook arithmetic the attack relies on; it is not a replica of the full 1,380 core-year computation.
         </p>
         <div class="button-group" style="margin-top: 1rem;">
           <button id="nfs-toy" class="btn btn-secondary" aria-label="Demonstrate the multiplicative raw-oracle property that √eNFS exploits">Show raw-oracle malleability</button>
@@ -1727,7 +1727,7 @@
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
           <li><strong style="color: var(--color-text);">Academic CPUs only:</strong> no GPUs, no AI assistance in the attack itself. The authors estimate 2–9 GPU-years for 1024-bit with GPU sieving (§1.3).</li>
           <li><strong style="color: var(--color-text);">Publication status:</strong> the paper was published on ePrint on Sept. 20, 2026 and is still a preprint at the moment of writing; the paper is a research result, not an emergency patch note.</li>
-          <li><strong style="color: var(--color-text);">Takeaway:</strong> the authors say this is not immediate alarm for most deployments, but that <em>2048–4096-bit RSA falls short of 128-bit security in this delayed-target model</em> (§6).</li>
+          <li><strong style="color: var(--color-text);">Takeaway:</strong> the authors say this is not immediate alarm for most deployments, but that <em>2048–4096-bit RSA falls short of a 128-bit security target in this delayed-target model</em> (§6); the estimate is an extrapolation, not a general factoring breakthrough.</li>
         </ul>
       </div>
 

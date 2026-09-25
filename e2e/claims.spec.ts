@@ -118,6 +118,50 @@ async function load(page: Page): Promise<void> {
   await page.waitForSelector('#main-content');
 }
 
+test('2026 paper section: caveat, §4 values, verification, and toy malleability all match the paper', async ({
+  page,
+}) => {
+  await load(page);
+
+  await page.locator('#oracle-without-factoring-title').scrollIntoViewIfNeeded();
+  await page.locator('#tab-5').click();
+  await expect(page.locator('#oracle-without-factoring')).toBeVisible();
+
+  const sectionText = await textOf(page, '#oracle-without-factoring');
+  expect(sectionText).toContain('§4.5');
+  expect(sectionText).toContain('generated the key outside the HSM');
+  expect(sectionText).toContain('black-box HSM');
+  expect(sectionText).toContain('temporary oracle access');
+  expect(sectionText).toContain('approximately 4.07 billion');
+
+  const e = await textOf(page, '#nfs-n');
+  expect(e).toContain('aa8bb728');
+  expect(await textOf(page, '#nfs-t')).toContain('804fbc7e');
+  expect(await textOf(page, '#nfs-s')).toContain('944678c4');
+
+  await page.locator('#nfs-verify').click();
+  const verifyStatus = await textOf(page, '#nfs-forgery-status');
+  const verifyText = await textOf(page, '#nfs-forgery-text');
+  expect(verifyStatus).toBe('Verified');
+  expect(verifyText).toContain('s^65537 mod N = t');
+  expect(verifyText).toContain('§4.5');
+  expect(verifyText).toContain('black-box HSM');
+
+  await page.locator('#nfs-toy').click();
+  await expect(page.locator('#nfs-toy-result')).toBeVisible();
+  const toyText = await textOf(page, '#nfs-toy-result');
+  expect(toyText).toContain('σ₁');
+  expect(toyText).toContain('σ₂');
+  expect(toyText).toContain('σᵉ mod n');
+  expect(toyText).toContain('not an implementation of √eNFS');
+
+  const n = hexOf(await textOf(page, '#nfs-n').then((v) => v.replace(/^0x/i, '')));
+  const s = hexOf(await textOf(page, '#nfs-s').then((v) => v.replace(/^0x/i, '')));
+  const t = hexOf(await textOf(page, '#nfs-t').then((v) => v.replace(/^0x/i, '')));
+  const forged = modPow(s, 65537n, n);
+  expect(forged).toBe(t);
+});
+
 /* ══════════════════════════════════════════════════════════════
    Panel 1 — textbook RSA
    ══════════════════════════════════════════════════════════════ */
