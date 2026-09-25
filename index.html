@@ -1557,6 +1557,195 @@
       </div>
     </section>
 
+    <section id="oracle-without-factoring" class="paper-brief" aria-labelledby="oracle-without-factoring-title">
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <h2 class="panel-title" id="oracle-without-factoring-title">Oracle Without Factoring — √eNFS (2026)</h2>
+          <span class="status-chip status-chip-warn">DELAYED-TARGET RSA</span>
+        </div>
+        <p class="panel-description">
+          Shea, Haller, Suhl, Heninger, and Thomé showed that a temporary raw-RSA oracle can be used to produce an e-th root for random targets <em>without ever factoring N</em> or recovering the private key.
+          This is the attack model in §1 and §2 of ePrint 2026/2131, with the precise oracle/games in Fig. 6 and the connection to the one-more RSA setting in §5.
+        </p>
+        <div class="citation">
+          <strong>Source of truth:</strong> Shea, Haller, Suhl, Heninger, Thomé. "Forging 1024-bit RSA signatures in nearly SNFS time." IACR ePrint 2026/2131. Background: Joux–Naccache–Thomé, ASIACRYPT 2007 / ePrint 2007/424. Code: <a href="https://github.com/ucsd-hacc/NSNFSSSFSFN" target="_blank" rel="noopener">ucsd-hacc/NSNFSSSFSFN</a>.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Threat model: delayed-target RSA (DT-RSA) vs OM-RSA</h3>
+        <div class="comparison-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1rem;">
+          <div class="oracle-mode-card" style="padding:1rem;">
+            <div class="oracle-mode-prompt"><strong>DT-RSA (the §1/§2 / Fig. 6 game)</strong></div>
+            <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.2rem; margin: 0.75rem 0 0; font-size: 0.9375rem;">
+              <li>Phase 1: attacker knows (N, e) and queries a raw RSA oracle w ↦ w<sup>d</sup> mod N.</li>
+              <li>Phase 2: oracle access disappears; attacker receives a random target t and must produce t<sup>1/e</sup> mod N.</li>
+              <li>Forgery can be repeated offline for any target.</li>
+              <li>The private key and primes are not recovered; the paper's point is the <em>temporary ability to make e-th roots</em> for a chosen key without factoring.</li>
+            </ul>
+          </div>
+          <div class="oracle-mode-card" style="padding:1rem;">
+            <div class="oracle-mode-prompt"><strong>OM-RSA (the older, stricter game)</strong></div>
+            <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.2rem; margin: 0.75rem 0 0; font-size: 0.9375rem;">
+              <li>One-more RSA is a different chosen-target/one-more inversion assumption used in blind-signature proofs.</li>
+              <li>In the paper's §5 discussion they show √eNFS solves DT-RSA, and that a straightforward adaptation for OM-RSA is much worse than GNFS.</li>
+              <li>Their point is precise: <em>√eNFS does not solve plain RSA, factoring, or (efficiently) one-more RSA</em>.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="citation" style="margin-top: 1rem;">
+          <strong>Figure 6 / §1 / §2 / §5:</strong> the paper names this setting “delayed-target RSA” and explicitly separates it from the ordinary factoring task and the OM-RSA assumption. This is not “break RSA by factoring”; it is a temporary oracle-assisted forgery model that leaves N unbroken.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Complexity: √eNFS vs GNFS vs SNFS</h3>
+        <p class="card-description">
+          The paper uses the same L<sub>N</sub>(1/3, c) notation as the classical factoring literature. For this attack the relevant costs are:
+          <strong>√eNFS = L<sub>N</sub>(1/3, 1.577)</strong>, <strong>GNFS = L<sub>N</sub>(1/3, 1.923)</strong>, and <strong>SNFS = L<sub>N</sub>(1/3, 1.526)</strong>.
+          The reason is that sieving is one-sided: the “other side” is traded for a large number of oracle queries, exactly as discussed in §3.1.
+        </p>
+        <div class="citation">
+          <strong>Ref:</strong> §3.1 and Fig. 7. The paper is explicit that this is a one-sided sieving speedup for the delayed-target setting, not a universal improvement for ordinary factoring or plain RSA.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Pipeline: from precomputation to forgery</h3>
+        <p class="card-description">
+          The attack pipeline matches Fig. 3: precomputation (polynomial selection, algebraic + extension sieving, all depending only on N and e) → oracle queries (rational, algebraic, extension) → individual forgery (descent, linear algebra mod e, e-th root in the number field).
+        </p>
+        <div class="step-grid" style="margin-top: 1rem;">
+          <div class="step-item">
+            <div class="step-label">Precomputation</div>
+            <div class="step-value">~1200 core-years</div>
+            <div class="step-desc">Paper Fig. 4, Fig. 1; depends only on N, e.</div>
+          </div>
+          <div class="step-item">
+            <div class="step-label">Oracle queries</div>
+            <div class="step-value">4,067,419,331 HSM queries</div>
+            <div class="step-desc">~2<sup>32</sup> raw queries; Fig. 4.</div>
+          </div>
+          <div class="step-item">
+            <div class="step-label">Per forgery</div>
+            <div class="step-value">~180 core-years</div>
+            <div class="step-desc">Descent + linear algebra + e-th root; Fig. 4.</div>
+          </div>
+          <div class="step-item">
+            <div class="step-label">Wall time</div>
+            <div class="step-value">~5 months</div>
+            <div class="step-desc">March 13 – Aug 31, 2026; Fig. 1, Fig. 4.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">LIVE VERIFICATION — real math from §4</h3>
+        <p class="card-description">
+          The paper gives the exact public key and forgery example in §4. This is the 1024-bit HSM key they forged against; the attack target and root are printed verbatim from the paper.
+        </p>
+        <div class="crypto-value-container" style="margin-top: 1rem;">
+          <div class="crypto-value-label">e</div>
+          <div class="crypto-value">65537</div>
+        </div>
+        <div class="crypto-value-container" style="margin-top: 1rem;">
+          <div class="crypto-value-label">N (1024-bit modulus, paper §4)</div>
+          <div class="crypto-value large-number" id="nfs-n" style="font-size: 0.7rem; word-break: break-all;">0xaa8bb728... (see source paper §4)</div>
+        </div>
+        <div class="crypto-value-container" style="margin-top: 1rem;">
+          <div class="crypto-value-label">t (random target)</div>
+          <div class="crypto-value large-number" id="nfs-t" style="font-size: 0.7rem; word-break: break-all;">0x804fbc7e...</div>
+        </div>
+        <div class="crypto-value-container" style="margin-top: 1rem;">
+          <div class="crypto-value-label">s = t^(1/e) mod N</div>
+          <div class="crypto-value large-number" id="nfs-s" style="font-size: 0.7rem; word-break: break-all;">0x944678c4...</div>
+        </div>
+        <div class="button-group" style="margin-top: 1rem;">
+          <button id="nfs-verify" class="btn btn-primary" aria-label="Verify the 2026 forgery against the paper's §4 constants">Verify the 2026 forgery</button>
+        </div>
+        <div id="nfs-forgery-box" class="result-box result-box-error" style="margin-top:1rem;" hidden aria-live="assertive">
+          <div class="result-box-icon" aria-hidden="true">🔐</div>
+          <div class="result-box-title" id="nfs-forgery-status">Status</div>
+          <div class="result-box-text" id="nfs-forgery-text">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Security table (Fig. 7) and caveats</h3>
+        <div class="comparison-table-wrapper" role="group" tabindex="0" aria-label="Security estimate table for √eNFS compared to GNFS and queries">
+          <table class="comparison-table" aria-label="√eNFS security table from Fig. 7">
+            <thead>
+              <tr>
+                <th scope="col">Key length</th>
+                <th scope="col">GNFS bit security</th>
+                <th scope="col">√eNFS bit security</th>
+                <th scope="col">Oracle queries</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1024</td><td>80</td><td>65</td><td>2<sup>32</sup></td></tr>
+              <tr><td>2048</td><td>112</td><td>90</td><td>2<sup>43</sup></td></tr>
+              <tr><td>3072</td><td>128</td><td>105</td><td>2<sup>51</sup></td></tr>
+              <tr><td>4096</td><td>144–152</td><td>119</td><td>2<sup>57</sup></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="card-description" style="margin-top: 1rem;">
+          The paper explicitly says these are <em>extrapolated</em> security estimates and that the costs are upper bounds (§6). The takeaway is not “RSA is dead tomorrow,” but that in this model, 2048–4096-bit RSA falls short of a 128-bit security target even before considering ordinary factoring or the usual signature security reductions.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Who is exposed? What is not.</h3>
+        <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
+          <li><strong style="color: var(--color-text);">Exposed in practice:</strong> HSMs exposing raw RSA via PKCS#11 <code>CKM_RSA_X_509</code> with FIPS mode off. This was the paper's actual oracle: Thales Luna K6 and remote Luna S750. The key is extracted as a capability, not as bits.</li>
+          <li><strong style="color: var(--color-text);">Also exposed:</strong> RSA blind signatures: RFC 9474 RSABSSA, Privacy Pass publicly-verifiable tokens, iCloud Private Relay, GNU Taler RSA-FDH.</li>
+          <li><strong style="color: var(--color-text);">Bleichenbacher chaining:</strong> a PKCS#1 v1.5 padding oracle can be used to answer each raw query, so an attacker can maintain decryption ability after the bug is patched. This is the link back to the Bleichenbacher section above (§7.3).</li>
+          <li><strong style="color: var(--color-text);">Not exposed in practice:</strong> normal PKCS#1 v1.5 / PSS signing. Per §5.2, the padded (AMR) variant costs L(1/3, 6<sup>1/3</sup> ≈ 1.817) and was not implemented. The paper also states its results do not carry to ECDSA or Ed25519.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Toy live piece: raw-oracle malleability at teaching size</h3>
+        <p class="card-description">
+          This is not √eNFS. It is a tiny sanity check of the exact malleability the paper exploits at scale: if a raw RSA oracle signs m₁ and m₂, then it also implicitly signs m₁·m₂. Here the browser does only the textbook arithmetic the attack relies on.
+        </p>
+        <div class="button-group" style="margin-top: 1rem;">
+          <button id="nfs-toy" class="btn btn-secondary" aria-label="Demonstrate the multiplicative raw-oracle property that √eNFS exploits">Show raw-oracle malleability</button>
+        </div>
+        <div id="nfs-toy-result" class="oracle-query-log" style="margin-top: 1rem;" hidden>
+          <div id="nfs-toy-sig1">—</div>
+          <div id="nfs-toy-sig2">—</div>
+          <div id="nfs-toy-forged">—</div>
+          <div id="nfs-toy-claim">—</div>
+          <div id="nfs-toy-note" style="margin-top: 0.5rem; color: var(--color-text-muted);">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Honesty panel</h3>
+        <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
+          <li><strong style="color: var(--color-text);">Academic CPUs only:</strong> no GPUs, no AI assistance in the attack itself. The authors estimate 2–9 GPU-years for 1024-bit with GPU sieving (§1.3).</li>
+          <li><strong style="color: var(--color-text);">Publication status:</strong> the paper was published on ePrint on Sept. 20, 2026 and is still a preprint at the moment of writing; the paper is a research result, not an emergency patch note.</li>
+          <li><strong style="color: var(--color-text);">Takeaway:</strong> the authors say this is not immediate alarm for most deployments, but that <em>2048–4096-bit RSA falls short of 128-bit security in this delayed-target model</em> (§6).</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Cross-links</h3>
+        <div class="cross-link-grid">
+          <a href="https://systemslibrarian.github.io/crypto-lab-factor-forge/" class="cross-link-card" aria-label="crypto-lab-factor-forge: breaking RSA ≠ factoring">
+            <span class="cross-link-name">crypto-lab-factor-forge</span>
+            <span class="cross-link-desc">Breaking RSA ≠ factoring — why a successful attack on a public key is not the same as splitting N.</span>
+          </a>
+          <a href="https://systemslibrarian.github.io/crypto-lab-privacy-pass/" class="cross-link-card" aria-label="crypto-lab-privacy-pass: RSABSSA and Privacy Pass demo">
+            <span class="cross-link-name">crypto-lab-privacy-pass</span>
+            <span class="cross-link-desc">Privacy Pass, RSA blind signatures, and the one-more / delayed-target security assumptions that this paper revisits.</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- ============================= PANEL 6: COMPARISON ============================= -->
     <section id="panel-6" class="panel" role="tabpanel" aria-labelledby="tab-6" tabindex="0" hidden>
       <div class="panel-header">

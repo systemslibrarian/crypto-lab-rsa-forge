@@ -24,6 +24,109 @@ import {
   bigintToHex, bigintToBytes, bytesToBigint, fromHex, ceilDiv,
 } from './ui.js';
 
+export const paper2026E = 65537n;
+const PAPER2026_N_HEX = 'aa8bb728b43ba939dc282ae5eace9e939ae5a985398db5816d4e266a1a64986d' +
+  '21a19152fb3cb738aa7ecd3b868f5ed42d6afd2ce33d450ab68ff0d8705604e4' +
+  '72d8a235a06b743bb5ea2b731585cafe38d9b5ec6f0f1aefd86dc26426891144' +
+  '67bb7ede0a3314daed0f3d184a7f605105ebd49dee447bbc23e331dfa8e1c113';
+const PAPER2026_TARGET_HEX = '804fbc7eb701fdc8fa1147900eb44395ace53ac96a9c676726131ef4fb4158fa' +
+  '33c50e3bf4bda303d8a6a8c51c0a3031b6a0c12378d7eb3b760ad760c30790af' +
+  'd64517920348c12e26ed75f233a4e731f772309c5df0873d8bcab2c116e3ff04' +
+  '3ea1ee3379eac327c58686b40f87edae312b0534a50df24206caa1e220368eb8';
+const PAPER2026_ROOT_HEX = '944678c4efa56b54dcaff74fac3cca0acc5dd571d18af653171693d8560fc2cf' +
+  '752e62edc5ba2a6f378e7afdebf3d3ffb3af6e1c139764d3753e9976da2dad12' +
+  'aa94e8365ae7cb599fdc528bc0618fc789fc0a27aac8403e101d4611c5faff62' +
+  '5832ca3c3509a7f021553d49e434dade3a097b0adfed94468a1d5e1d9ee68f88';
+
+export const paper2026N = BigInt(`0x${PAPER2026_N_HEX}`);
+export const paper2026Target = BigInt(`0x${PAPER2026_TARGET_HEX}`);
+export const paper2026Root = BigInt(`0x${PAPER2026_ROOT_HEX}`);
+
+export function verify2026PaperForgery(): {
+  n: bigint; root: bigint; value: bigint; ok: boolean; bitLength: number;
+} {
+  const root = paper2026Root;
+  const n = paper2026N;
+  const value = paper2026Target;
+  const forged = modPow(root, paper2026E, n);
+  return {
+    n,
+    root,
+    value,
+    ok: forged === value,
+    bitLength: n.toString(2).length,
+  };
+}
+
+export function toyMultiplicativeRawOracle(
+  n: bigint,
+  e: bigint,
+  sigma1: bigint,
+  sigma2: bigint,
+  messageProduct: bigint,
+): bigint {
+  const candidate = (sigma1 * sigma2) % n;
+  const verification = modPow(candidate, e, n);
+  if (verification !== messageProduct % n) {
+    throw new Error('toy raw-oracle forgery did not satisfy the multiplicative check');
+  }
+  return candidate;
+}
+
+export function initOracleWithoutFactoringPanel(): void {
+  setText('nfs-n', '0x' + bigintToHex(paper2026N));
+  setText('nfs-t', '0x' + bigintToHex(paper2026Target));
+  setText('nfs-s', '0x' + bigintToHex(paper2026Root));
+
+  const verifyBtn = document.getElementById('nfs-verify') as HTMLButtonElement | null;
+  const toyBtn = document.getElementById('nfs-toy') as HTMLButtonElement | null;
+
+  verifyBtn?.addEventListener('click', () => {
+    const result = verify2026PaperForgery();
+    const status = document.getElementById('nfs-forgery-status') as HTMLElement | null;
+    const text = document.getElementById('nfs-forgery-text') as HTMLElement | null;
+    const box = document.getElementById('nfs-forgery-box') as HTMLElement | null;
+
+    if (!status || !text || !box) return;
+
+    const check = modPow(result.root, paper2026E, result.n);
+    const ok = check === result.value;
+    status.textContent = ok ? 'Verified' : 'Mismatch';
+    box.className = ok ? 'result-box result-box-success' : 'result-box result-box-error';
+    text.innerHTML = ok
+      ? `Verified: s^65537 mod N = t, with s = 0x${bigintToHex(result.root)}, t = 0x${bigintToHex(result.value)}, log₂(N) = ${result.bitLength}, and the key bit length is 1024. This is a real signature forgery on a real HSM key whose factors nobody knows.`
+      : `Mismatch: s^65537 mod N ≠ t. Actual value: 0x${bigintToHex(check)}.`;
+    show('nfs-forgery-box');
+    announce(ok ? '2026 §4 forgery verified against the paper’s HSM key.' : '2026 §4 forgery verification failed.');
+  });
+
+  toyBtn?.addEventListener('click', () => {
+    const kp = generateRsaKeyPair(128, 65537n);
+    const m1 = 17n;
+    const m2 = 19n;
+    const sigma1 = modPow(m1, kp.d, kp.n);
+    const sigma2 = modPow(m2, kp.d, kp.n);
+    const forged = toyMultiplicativeRawOracle(kp.n, kp.e, sigma1, sigma2, m1 * m2);
+    const claimed = modPow(forged, kp.e, kp.n);
+
+    const sig1El = document.getElementById('nfs-toy-sig1') as HTMLElement | null;
+    const sig2El = document.getElementById('nfs-toy-sig2') as HTMLElement | null;
+    const forgedEl = document.getElementById('nfs-toy-forged') as HTMLElement | null;
+    const claimEl = document.getElementById('nfs-toy-claim') as HTMLElement | null;
+    const noteEl = document.getElementById('nfs-toy-note') as HTMLElement | null;
+
+    if (!sig1El || !sig2El || !forgedEl || !claimEl || !noteEl) return;
+
+    sig1El.textContent = `σ₁ = m₁ᵈ mod n = 0x${bigintToHex(sigma1)}`;
+    sig2El.textContent = `σ₂ = m₂ᵈ mod n = 0x${bigintToHex(sigma2)}`;
+    forgedEl.textContent = `σ = σ₁σ₂ mod n = 0x${bigintToHex(forged)}`;
+    claimEl.textContent = `σᵉ mod n = 0x${bigintToHex(claimed)} = m₁m₂ mod n`;
+    noteEl.textContent = 'This is the malleability √eNFS exploits at scale (§3.1): raw RSA oracle answers on m₁ and m₂ yield a valid raw signature on m₁·m₂ without factoring.';
+    show('nfs-toy-result');
+    announce('Toy raw-oracle malleability demonstration ran.');
+  });
+}
+
 /* ════════════════════════════════════════════════════════════
    BigInt arithmetic helpers
    ════════════════════════════════════════════════════════════ */

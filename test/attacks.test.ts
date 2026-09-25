@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   intCubeRoot, crt3,
   pkcs1v15Pad, pkcs1v15Unpad, makePkcs1v15Oracle, bleichenbacherAttack,
+  paper2026N, paper2026Target, paper2026Root, verify2026PaperForgery,
+  toyMultiplicativeRawOracle,
 } from '../src/attacks.js';
 import {
   modPow, generateRsaKeyPair, encodeMessage, decodeMessage,
@@ -175,4 +177,69 @@ describe('Bleichenbacher attack — full interval narrowing', () => {
     expect(recovered).not.toBeNull();
     expect(new TextDecoder().decode(recovered!)).toBe(target);
   }, 30_000);
+});
+
+describe('2026 paper: delayed-target RSA without factoring', () => {
+  it('verifies the exact §4 forgery on the paper’s HSM key', () => {
+    const result = verify2026PaperForgery();
+    expect(result.ok).toBe(true);
+    expect(result.bitLength).toBe(1024);
+    expect(result.value).toBe(paper2026Target);
+    expect(result.root).toBe(paper2026Root);
+    expect(result.n).toBe(paper2026N);
+    expect(result.root ** 65537n % paper2026N).toBe(paper2026Target);
+  });
+
+  it('demonstrates the multiplicative raw-oracle property the attack exploits', () => {
+    const kp = generateRsaKeyPair(128, 65537n);
+    const m1 = 17n;
+    const m2 = 19n;
+    const s1 = modPow(m1, kp.d, kp.n);
+    const s2 = modPow(m2, kp.d, kp.n);
+    const forged = toyMultiplicativeRawOracle(kp.n, kp.e, s1, s2, m1 * m2);
+    expect(forged).toBe((s1 * s2) % kp.n);
+    expect(modPow(forged, kp.e, kp.n)).toBe((m1 * m2) % kp.n);
+  });
+
+  it('rejects the same raw multiplicative forgery under RSA-PSS verification', async () => {
+    const kp = generateRsaKeyPair(1024, 65537n);
+    const m1 = 17n;
+    const m2 = 19n;
+    const sigma1 = modPow(m1, kp.d, kp.n);
+    const sigma2 = modPow(m2, kp.d, kp.n);
+    const forged = toyMultiplicativeRawOracle(kp.n, kp.e, sigma1, sigma2, m1 * m2);
+
+    const b64url = (x: bigint) => {
+      const bytes = bigintToBytes(x, Math.ceil(kp.n.toString(16).length / 2));
+      let bin = '';
+      for (const b of bytes) bin += String.fromCharCode(b);
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    };
+
+    const jwk = {
+      kty: 'RSA',
+      n: b64url(kp.n),
+      e: b64url(kp.e),
+      alg: 'PS256',
+      key_ops: ['verify'],
+    };
+
+    const publicKey = await crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      { name: 'RSA-PSS', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+
+    const forgedSig = bigintToBytes(forged, Math.ceil(kp.n.toString(16).length / 2));
+    const valid = await crypto.subtle.verify(
+      { name: 'RSA-PSS', saltLength: 32 },
+      publicKey,
+      forgedSig,
+      new TextEncoder().encode('not a real PSS signature'),
+    );
+
+    expect(valid).toBe(false);
+  });
 });

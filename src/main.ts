@@ -7,7 +7,7 @@ import { initUI } from './ui.js';
 import { initTextbookPanel } from './textbook.js';
 import { initOaepPanel } from './oaep.js';
 import { initPssPanel } from './pss.js';
-import { initHastadPanel, initBleichenbacherPanel } from './attacks.js';
+import { initHastadPanel, initBleichenbacherPanel, initOracleWithoutFactoringPanel } from './attacks.js';
 import { initComparePanel } from './compare.js';
 import { initDeterminismPanel } from './determinism.js';
 import { initHybridPanel } from './hybrid.js';
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPssPanel();
   initHastadPanel();
   initBleichenbacherPanel();
+  initOracleWithoutFactoringPanel();
   initComparePanel();
   initDeterminismPanel();
   initHybridPanel();
