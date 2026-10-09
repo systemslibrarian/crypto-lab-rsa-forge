@@ -169,6 +169,14 @@ test('2026 paper section: caveat, §4 values, verification, and toy malleability
 test('textbook keygen publishes a key whose own numbers satisfy the RSA identities', async ({
   page,
 }) => {
+  // announce() clears the live region and fills it on a later animation frame.
+  // Keep that boundary observable even when a fast local browser hides it.
+  await page.addInitScript(() => {
+    const nextFrame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback) => nextFrame((time) => {
+      window.setTimeout(() => callback(time), 100);
+    });
+  });
   await load(page);
   await page.locator('#tb-gen-small').click();
   await expect(page.locator('#tb-params')).toBeVisible();
@@ -194,6 +202,7 @@ test('textbook keygen publishes a key whose own numbers satisfy the RSA identiti
   expect(verify).not.toContain('this key is broken');
 
   // 32-bit primes -> a 63/64-bit modulus. Announced size must match the modulus.
+  await expect(page.locator('#aria-live')).toHaveText(/RSA \d+-bit key pair generated successfully\./);
   const announced = await textOf(page, '#aria-live');
   expect(announced).toMatch(/RSA \d+-bit key pair generated successfully\./);
   expect(numOf(announced)).toBe(n.toString(2).length);
