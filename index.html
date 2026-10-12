@@ -1247,6 +1247,28 @@
         </div>
       </div>
 
+      <div class="card" id="reverse-bleichenbacher-research">
+        <h3 class="card-title">Research update: Reverse-Bleichenbacher (October 2026)</h3>
+        <p class="card-description">
+          Lü et al. recover the least significant secret bytes first and stop once the target secret is recovered,
+          rather than spending queries recovering the entire padding block. Their paper reports experiments with
+          2048-bit RSA and a standards-conforming PKCS#1 v1.5 oracle, targeting legacy TLS RSA key exchange.
+          The attack requires an exploitable decryption oracle; it is not a general factoring result or a break of OAEP,
+          PSS, or TLS 1.3 key exchange.
+        </p>
+        <p class="card-description">
+          This browser runs the classical full-plaintext interval attack on 128-bit RSA with a weaker oracle that
+          checks only the leading <code>00 02</code> bytes. It does not implement Reverse-Bleichenbacher or reproduce
+          the paper’s performance measurements. Disable legacy TLS RSA key exchange and remove PKCS#1 v1.5
+          decryption-oracle leakage in real deployments.
+        </p>
+        <div class="citation">
+          <strong>Primary source:</strong> Lü, Hetterich, Zanotto, Cremers, Schwarz and Gerlach.
+          <a href="https://eprint.iacr.org/2026/2414" target="_blank" rel="noopener noreferrer">Reverse-Bleichenbacher: Bleichenbacher Attacks are Practical Again — ePrint 2026/2414</a>.
+          Received 8 October 2026; approved 11 October 2026. The ePrint record lists NDSS 2027 (minor revision).
+        </div>
+      </div>
+
       <!-- PKCS#1 v1.5 Structure -->
       <div class="card">
         <h3 class="card-title">PKCS#1 v1.5 Encryption Padding Structure</h3>
@@ -1283,8 +1305,7 @@
           <span class="alert-icon" aria-hidden="true">🔬</span>
           <div class="alert-content">
             <div class="alert-title">Demonstration uses 128-bit RSA</div>
-            <div class="alert-text">Real attacks target ≥ 1024-bit keys. The mathematics are identical — 
-              only scale differs. The oracle checks real PKCS#1 v1.5 padding on real RSA decryption.</div>
+            <div class="alert-text">Real attacks target ≥ 1024-bit keys. The classical interval mathematics run on real RSA decryption. This teaching oracle checks only the leading 00 02 bytes, rather than every PKCS#1 v1.5 padding requirement; its query counts are not production benchmarks.</div>
           </div>
         </div>
         <div class="button-group" style="margin-top: 1rem;">

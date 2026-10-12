@@ -1007,3 +1007,14 @@ test('each tab reveals exactly one panel', async ({ page }) => {
     }
   }
 });
+
+
+test('the Reverse-Bleichenbacher source is visible in the oracle panel with its attack-model limits', async ({ page }) => {
+  await load(page);
+  await page.locator('#tab-5').click();
+  const card = page.locator('#reverse-bleichenbacher-research');
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('link')).toHaveAttribute('href', 'https://eprint.iacr.org/2026/2414');
+  await expect(card).toContainText('exploitable decryption oracle');
+  await expect(card).toContainText('does not implement Reverse-Bleichenbacher');
+});
