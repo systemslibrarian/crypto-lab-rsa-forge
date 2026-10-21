@@ -1955,3 +1955,26 @@ footer {
   line-height: 1.65;
   color: var(--c-text);
 }
+
+/* The appended teaching panels use the existing semantic palette. */
+.rsa-extension { min-width: 0; }
+.rsa-extension .card > * { min-width: 0; }
+.rsa-extension p { margin-bottom: 1rem; line-height: 1.65; overflow-wrap: anywhere; }
+.rsa-extension [data-state="pass"] { color: var(--c-safe); }
+.rsa-extension [data-state="fail"] { color: var(--c-danger); }
+.rsa-extension label { display: block; margin: .8rem 0 .3rem; }
+.rsa-extension input:not([type="checkbox"]), .rsa-extension select { width: 100%; max-width: 36rem; }
+.rsa-extension .extension-toggle { display: flex; align-items: center; gap: .65rem; min-height: 44px; }
+.extension-toggle input { width: 20px; height: 20px; flex-shrink: 0; }
+.rsa-extension details { margin: 1rem 0; min-width: 0; }
+.rsa-extension summary { cursor: pointer; padding: .5rem 0; }
+.rsa-extension pre, .rsa-extension code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rsa-extension pre { max-height: 24rem; overflow: auto; }
+.rsa-extension .crypto-value { overflow-wrap: anywhere; }
+.rsa-extension .status-chip { white-space: normal; }
+.rsa-extension .extension-negative { border: 2px solid var(--c-danger); padding: 1rem; }
+#parity-byte-row .known { border-color: var(--c-danger); }
+#parity-byte-row .known .byte-cell-hex, #parity-byte-row .known .byte-cell-ascii { color: var(--c-danger); }
+.rsa-extension a, .cve-card-text a { color: var(--c-primary); text-decoration: underline; }
+
+.oracle-mode-card { min-width: 0; overflow-wrap: anywhere; }

@@ -1195,8 +1195,8 @@
             </div>
             <div class="cve-card-title">Debian weak RSA keys</div>
             <div class="cve-card-text">
-              OpenSSL PRNG bug on Debian/Ubuntu (2006-2008) produced predictable RSA primes.
-              GCD across many public keys factored thousands of "secure" SSH/TLS keys.
+              OpenSSL’s Debian/Ubuntu PRNG bug (2006–2008) left only 15 bits of entropy, making keys enumerable.
+              Heninger et al. reported Debian weak keys separately in Table 2. Identical moduli give gcd(N, N) = N, which does not split the key.
             </div>
             <div class="cve-card-vendors">OpenSSL · Debian · Ubuntu · countless SSH hosts</div>
           </div>
@@ -1208,7 +1208,9 @@
             <div class="cve-card-title">"Mining Your Ps and Qs"</div>
             <div class="cve-card-text">
               USENIX Security scan recovered private keys for 0.5% of TLS hosts and 0.03% of SSH hosts by
-              computing GCDs of shared prime factors — a direct cousin of small-exponent/CRT recovery.
+              computing GCDs of shared prime factors — a failure of key-generation entropy.
+              Explore batch GCD in <a href="https://systemslibrarian.github.io/crypto-lab-factor-forge/">Factor Forge’s Shared Primes tab</a>.
+              <a href="https://factorable.net/weakkeys12.conference.pdf">Source: Heninger et al. (2012), §4.2 and Table 2</a>.
             </div>
             <div class="cve-card-vendors">TLS · SSH · embedded routers · printers</div>
           </div>
@@ -1598,7 +1600,7 @@
 
       <div class="card">
         <h3 class="card-title">Threat model: delayed-target RSA (DT-RSA) vs OM-RSA</h3>
-        <div class="comparison-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1rem;">
+        <div class="comparison-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:1rem;">
           <div class="oracle-mode-card" style="padding:1rem;">
             <div class="oracle-mode-prompt"><strong>DT-RSA (the §1/§2 / Fig. 6 game)</strong></div>
             <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.2rem; margin: 0.75rem 0 0; font-size: 0.9375rem;">

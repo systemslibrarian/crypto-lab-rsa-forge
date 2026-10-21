@@ -10,7 +10,8 @@
     "deploy": "gh workflow run pages.yml --repo systemslibrarian/crypto-lab-rsa-forge --ref main",
     "test": "vitest run",
     "test:a11y": "playwright test",
-    "test:publish-request": "node --test tests/publish-request.node.mjs"
+    "test:publish-request": "node --test tests/publish-request.node.mjs",
+    "test:mutations": "node scripts/check-extension-mutations.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

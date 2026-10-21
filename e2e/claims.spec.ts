@@ -997,12 +997,14 @@ test('no result region is painted before the run that fills it', async ({ page }
 
 test('each tab reveals exactly one panel', async ({ page }) => {
   await load(page);
-  for (let i = 1; i <= 6; i++) {
+  const tabs = await page.locator(".tab-btn").count();
+  expect(tabs).toBe(8);
+  for (let i = 1; i <= tabs; i++) {
     await page.locator(`#tab-${i}`).click();
     await expect(page.locator(`#panel-${i}`)).toBeVisible();
     await expect(page.locator(`#tab-${i}`)).toHaveAttribute('aria-selected', 'true');
     expect(await page.locator('.panel:visible').count()).toBe(1);
-    for (let j = 1; j <= 6; j++) {
+    for (let j = 1; j <= tabs; j++) {
       if (j !== i) await expect(page.locator(`#panel-${j}`)).toBeHidden();
     }
   }
@@ -1017,4 +1019,77 @@ test('the Reverse-Bleichenbacher source is visible in the oracle panel with its 
   await expect(card.getByRole('link')).toHaveAttribute('href', 'https://eprint.iacr.org/2026/2414');
   await expect(card).toContainText('exploitable decryption oracle');
   await expect(card).toContainText('does not implement Reverse-Bleichenbacher');
+});
+
+/* Tabs 7–8: independent public arithmetic and negative fixtures. */
+import { createHash } from 'node:crypto';
+async function extensionValue(page:Page,id:string):Promise<bigint>{return BigInt(await textOf(page,'#'+id));}
+async function faultSigned(page:Page){await load(page);await openPanel(page,7);await page.locator('#fault-generate').click();await expect(page.locator('#fault-sign')).toBeEnabled();await page.locator('#fault-sign').click();await expect(page.locator('#fault-inject')).toBeEnabled();}
+function independentGcd(a:bigint,b:bigint){a=a<0n?-a:a;while(b)[a,b]=[b,a%b];return a;}
+function independentOaep(encoded:Buffer):Buffer{
+  if(encoded.length<66||encoded[0]!==0)throw Error('OAEP leading byte');
+  const mgf=(seed:Buffer,n:number)=>{const blocks:Buffer[]=[];for(let c=0;blocks.length*32<n;c++){const counter=Buffer.alloc(4);counter.writeUInt32BE(c);blocks.push(createHash('sha256').update(seed).update(counter).digest());}return Buffer.concat(blocks).subarray(0,n);};
+  const seed=Buffer.from(encoded.subarray(1,33)),db=Buffer.from(encoded.subarray(33));let mask=mgf(db,32);for(let i=0;i<32;i++)seed[i]^=mask[i];mask=mgf(seed,db.length);for(let i=0;i<db.length;i++)db[i]^=mask[i];
+  if(!db.subarray(0,32).equals(createHash('sha256').update('').digest()))throw Error('OAEP hash');let i=32;while(db[i]===0)i++;if(db[i]!==1)throw Error('OAEP separator');return db.subarray(i+1);
+}
+test.afterEach(async({page})=>{if(process.env.MUTATION_ASSETS){const expected=JSON.parse(process.env.MUTATION_ASSETS);const loaded=await page.locator('script[type=module][src]').evaluateAll(es=>es.map(e=>new URL((e as HTMLScriptElement).src).pathname.split('/').at(-1)).sort());expect(loaded,'MUTATION_ASSET_MISMATCH loaded modules').toEqual(Object.keys(expected).sort());}if(process.env.MUTATION_ASSETS)for(const [name,hash] of Object.entries(JSON.parse(process.env.MUTATION_ASSETS))){const response=await page.request.get('assets/'+name);expect(response.ok(),'MUTATION_ASSET_MISMATCH').toBe(true);expect(createHash('sha256').update(await response.body()).digest('hex'),'MUTATION_ASSET_MISMATCH').toBe(hash);}});
+
+test('Tab 7: verify-before-release withholds a genuinely rejected faulty signature',async({page})=>{
+  await faultSigned(page);await expect(page.locator('#fault-protect')).toBeChecked();await page.locator('#fault-inject').click();await expect(page.locator('#fault-status')).toContainText('Withheld');
+  await expect(page.locator('#fault-correct-check')).toHaveAttribute('data-state','pass');await expect(page.locator('#fault-bad-check')).toHaveAttribute('data-state','fail');await expect(page.locator('#fault-factor')).toBeDisabled();await expect(page.locator('#fault-result .status-chip')).toHaveClass(/status-chip-safe/);
+  const N=await extensionValue(page,'fault-N'),e=await extensionValue(page,'fault-e'),f=await extensionValue(page,'fault-faulty'),EM=await extensionValue(page,'fault-EM');expect(modPow(f,e,N)).not.toBe(EM);
+});
+
+test('Tab 7: one released fault factors the actual exported RSA-2048 key',async({page})=>{
+  await page.addInitScript(()=>{const original=crypto.subtle.exportKey.bind(crypto.subtle);(window as any).capturedRsa=[];crypto.subtle.exportKey=(async(...args:any[])=>{const result=await (original as any)(...args);if(args[0]==='jwk'&&result.kty==='RSA'&&result.d)(window as any).capturedRsa.push(result);return result;}) as any;});
+  await faultSigned(page);const jwk=await page.evaluate(()=>(window as any).capturedRsa.at(-1));const decode=(s:string)=>BigInt('0x'+Buffer.from(s,'base64url').toString('hex'));
+  await page.locator('#fault-protect').uncheck();await page.locator('#fault-bit').fill('17');await page.locator('#fault-inject').click();await expect(page.locator('#fault-factor')).toBeEnabled();await page.locator('#fault-factor').click();await expect(page.locator('#fault-status')).toContainText('Attack complete');
+  const N=await extensionValue(page,'fault-N'),p=await extensionValue(page,'fault-gcd'),q=N/p,e=await extensionValue(page,'fault-e'),s=await extensionValue(page,'fault-s'),f=await extensionValue(page,'fault-faulty'),EM=await extensionValue(page,'fault-EM'),difference=(modPow(f,e,N)-EM+N)%N;
+  expect(N).toBe(decode(jwk.n));expect(p).toBe(decode(jwk.p));expect(q).toBe(decode(jwk.q));expect(p>1n&&p<N&&N%p===0n).toBe(true);expect(independentGcd(difference,N)).toBe(p);expect(independentGcd(s-f,N)).toBe(p);expect(await extensionValue(page,'fault-difference')).toBe(difference);
+  await expect(page.locator('#fault-jwk-check')).toHaveAttribute('data-state','pass');await expect(page.locator('#fault-result .status-chip')).toHaveClass(/status-chip-danger/);
+});
+
+test('Tab 7: valid employee keys still expose every colleague, with all fixture checks passing',async({page})=>{
+  await load(page);await openPanel(page,7);await page.locator('#shared-issue').click();await expect(page.locator('#shared-factor')).toBeEnabled();
+  const N=await extensionValue(page,'shared-N'),phi=await extensionValue(page,'shared-phi'),eA=await extensionValue(page,'shared-eA'),dA=await extensionValue(page,'shared-dA'),eB=await extensionValue(page,'shared-eB'),dB=await extensionValue(page,'shared-dB'),m=await extensionValue(page,'shared-message'),cB=await extensionValue(page,'shared-cB');
+  expect(eA*dA%phi).toBe(1n);expect(eB*dB%phi).toBe(1n);expect(modPow(modPow(m,eA,N),dA,N)).toBe(m);expect(modPow(cB,dB,N)).toBe(m);
+  for(const id of ['A-identity','A-roundtrip','B-identity','B-roundtrip'])await expect(page.locator('#shared-'+id)).toHaveAttribute('data-state','pass');
+  await page.locator('#shared-factor').click();await expect(page.locator('#shared-read')).toBeEnabled();const p=await extensionValue(page,'shared-p'),q=await extensionValue(page,'shared-q');expect(p*q).toBe(N);expect(p>1n&&p<N).toBe(true);
+  await page.locator('#shared-read').click();await expect(page.locator('#shared-result')).toContainText('VALID KEY — AND EVERY COLLEAGUE EXPOSED');expect(await extensionValue(page,'shared-recoveredMessage')).toBe(m);expect(modPow(cB,await extensionValue(page,'shared-recoveredDB'),N)).toBe(m);
+  await expect(page.locator('#shared-mail')).toHaveText('Private memo for B');await expect(page.locator('#shared-result .status-chip')).toHaveClass(/status-chip-danger/);
+  await expect(page.locator('#shared-negative')).toHaveText("Each employee's key pair is valid on its own — e·d ≡ 1 mod φ(N) and the round trip succeeds — and any one of them still decrypts every colleague's mail.");await expect(page.locator('#shared-negative')).toBeVisible();
+});
+
+test('Tab 7: public Bezout arithmetic recovers the message and independently rejects the OAEP contrast',async({page})=>{
+  await load(page);await openPanel(page,7);await page.locator('#common-encrypt').click();await expect(page.locator('#common-attack')).toBeEnabled();await page.locator('#common-attack').click();await expect(page.locator('#common-status')).toContainText('Attack complete');
+  const N=await extensionValue(page,'common-N'),e1=await extensionValue(page,'common-e1'),e2=await extensionValue(page,'common-e2'),X=await extensionValue(page,'common-X'),Y=await extensionValue(page,'common-Y'),c1=await extensionValue(page,'common-c1'),c2=await extensionValue(page,'common-c2');
+  const pow=(c:bigint,x:bigint)=>x<0n?modPow(modInverse(c,N),-x,N):modPow(c,x,N);
+  expect(X*e1+Y*e2).toBe(1n);const recovered=pow(c1,X)*pow(c2,Y)%N;expect(recovered).toBe(encodeMessage('Same memo'));expect(await extensionValue(page,'common-recovered')).toBe(recovered);await expect(page.locator('#common-result .status-chip')).toHaveClass(/status-chip-danger/);
+  await page.locator('#common-oaep').click();await expect(page.locator('#common-status')).toContainText('Attack complete');
+  const bad=pow(await extensionValue(page,'common-oaep1'),X)*pow(await extensionValue(page,'common-oaep2'),Y)%N;expect(await extensionValue(page,'common-recovered')).toBe(bad);expect(()=>independentOaep(Buffer.from(bad.toString(16).padStart(512,'0'),'hex'))).toThrow('OAEP');
+  for(const id of ['em1','em2'])expect(independentOaep(Buffer.from((await extensionValue(page,'common-'+id)).toString(16).padStart(512,'0'),'hex')).toString()).toBe('Same memo');
+  expect(await extensionValue(page,'common-em1')).not.toBe(await extensionValue(page,'common-em2'));await expect(page.locator('#common-result')).toContainText('ATTACK FAILED');await expect(page.locator('#common-result .status-chip')).toHaveClass(/status-chip-safe/);
+});
+
+test('Tab 8: one-bit-only negative fixture recovers low bytes and re-encrypts after exactly bitLength N queries',async({page})=>{
+  await load(page);await openPanel(page,8);await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();const N=await extensionValue(page,'parity-N'),e=await extensionValue(page,'parity-e'),y=await extensionValue(page,'parity-y'),x=encodeMessage('One bit is enough.');
+  for(let i=1;i<=16;i++){await page.locator('#parity-step').click();await expect(page.locator('#parity-count')).toHaveText(String(i));}
+  const cells=page.locator('#parity-byte-row .known .byte-cell-hex');expect(await cells.count()).toBe(2);expect((await cells.allTextContents()).join('')).toBe(x.toString(16).slice(-4));
+  await page.locator('#parity-run').click();await expect(page.locator('#parity-status')).toContainText('Recovered with exactly',{timeout:60000});
+  const log=(await textOf(page,'#parity-bits')).split(' ');expect(log.length).toBe(N.toString(2).length);expect(log.every(b=>b==='0'||b==='1')).toBe(true);await expect(page.locator('#parity-count')).toHaveText(String(N.toString(2).length));
+  const sum=log.reduce((a,b,i)=>a+(BigInt(b)<<BigInt(i)),0n),mask=1n<<BigInt(log.length);expect(((-N*sum)%mask+mask)%mask).toBe(x);expect(await extensionValue(page,'parity-recovered')).toBe(x);expect(modPow(x,e,N)).toBe(y);
+  await expect(page.locator('#parity-reencrypt')).toHaveAttribute('data-state','pass');await expect(page.locator('#parity-result .status-chip')).toHaveClass(/status-chip-danger/);await expect(page.locator('#parity-plaintext')).toHaveText('One bit is enough.');
+  await expect(page.locator('#parity-negative')).toHaveText('The server never returns a plaintext, only one bit, and that is enough to decrypt everything it can be sent.');await expect(page.locator('#parity-negative')).toBeVisible();
+});
+
+test('Tab 8: real-size cancellation remains partial; resume reaches 2048 verified queries',async({page})=>{
+  test.setTimeout(120000);await load(page);await openPanel(page,8);await page.locator('#parity-size').selectOption('2048');await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await page.locator('#parity-run').click();await expect.poll(async()=>Number(await textOf(page,'#parity-count'))).toBeGreaterThan(0);await page.locator('#parity-cancel').click();await expect(page.locator('#parity-status')).toContainText('Cancelled');await expect(page.locator('#parity-result')).toContainText('PARTIAL');await expect(page.locator('#parity-plaintext')).toHaveCount(0);expect(Number(await textOf(page,'#parity-count'))).toBeLessThan(2048);
+  await page.locator('#parity-run').click();await expect(page.locator('#parity-status')).toContainText('Recovered with exactly',{timeout:90000});await expect(page.locator('#parity-count')).toHaveText('2048');await expect(page.locator('#parity-reencrypt')).toHaveAttribute('data-state','pass');expect(await extensionValue(page,'parity-recovered')).toBe(encodeMessage('One bit is enough.'));
+});
+
+test('Tabs 7–8: edits and fresh keys retire results, while identical inputs preserve them',async({page})=>{
+  await faultSigned(page);await page.locator('#fault-inject').click();await expect(page.locator('#fault-status')).toContainText('Withheld');const before=await textOf(page,'#fault-result');await page.locator('#fault-protect').dispatchEvent('change');await page.locator('#fault-bit').dispatchEvent('input');await expect(page.locator('#fault-result')).toHaveText(before);
+  await page.locator('#fault-bit').fill('1024');await expect(page.locator('#fault-result')).toBeEmpty();await page.locator('#fault-inject').click();await expect(page.locator('#fault-status')).toContainText('Bit index');await expect(page.locator('#fault-factor')).toBeDisabled();
+  await page.locator('#fault-generate').click();await expect(page.locator('#fault-result')).toBeEmpty();await expect(page.locator('#fault-sign')).toBeEnabled();await expect(page.locator('#fault-inject')).toBeDisabled();
+  await openPanel(page,8);await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await page.locator('#parity-step').click();await page.locator('#parity-size').dispatchEvent('change');await page.locator('#parity-message').dispatchEvent('input');await expect(page.locator('#parity-count')).toHaveText('1');await page.locator('#parity-message').fill('edited');await expect(page.locator('#parity-count')).toHaveText('0');await expect(page.locator('#parity-result')).toBeEmpty();await expect(page.locator('#parity-step')).toBeDisabled();
 });

@@ -1,3 +1,6 @@
+import { initPitfallsPanel } from './pitfalls-panel.js';
+import { initParityPanel } from './parity-panel.js';
+import { mountExtensionPanels } from './extension-panels.js';
 /**
  * main.ts — Entry point.
  * Imports all panel modules and the UI controller, then initializes.
@@ -15,8 +18,11 @@ import { initGlossary } from './glossary.js';
 
 // Initialize once the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  mountExtensionPanels();
   initUI();
   initGlossary();
+  initPitfallsPanel();
+  initParityPanel();
   initTextbookPanel();
   initOaepPanel();
   initPssPanel();

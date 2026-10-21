@@ -322,7 +322,7 @@ export async function boot(page: Page, theme: 'dark' | 'light'): Promise<void> {
   // ── The tab machinery: one panel visible, five hidden ───────────────────
   await expect(page.locator('#panel-1')).toBeVisible();
   await expect(page.locator('#tab-1')).toHaveAttribute('aria-selected', 'true');
-  for (const n of [2, 3, 4, 5, 6]) {
+  for (const n of [2, 3, 4, 5, 6, 7, 8]) {
     await expect(page.locator(`#panel-${n}`)).toBeHidden();
     await expect(page.locator(`#tab-${n}`)).toHaveAttribute('aria-selected', 'false');
   }
@@ -1201,4 +1201,21 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await page.keyboard.press('Escape');
   await expect(page.locator('#gloss-body')).toBeHidden();
   await scanAt('glossary popover dismissed');
+}
+
+export async function driveExtensions(page:Page,label:string):Promise<void>{
+  await page.locator('#tab-7').click();await scan(page,label+' pitfalls arrival');
+  await page.locator('#fault-generate').click();await expect(page.locator('#fault-sign')).toBeEnabled();await scan(page,label+' fresh RSA-2048 key');
+  await page.locator('#fault-sign').click();await expect(page.locator('#fault-inject')).toBeEnabled();await scan(page,label+' correct signature');
+  await page.locator('#fault-inject').click();await expect(page.locator('#fault-status')).toContainText('Withheld');await scan(page,label+' withheld fault');
+  await page.locator('#fault-protect').uncheck();await scan(page,label+' explicit broken mode');await page.locator('#fault-inject').click();await expect(page.locator('#fault-factor')).toBeEnabled();await page.locator('#fault-factor').click();await expect(page.locator('#fault-status')).toContainText('Attack complete');await scan(page,label+' factored private key');
+  await page.locator('#panel-7 details').nth(0).locator('summary').click();await scan(page,label+' CRT values disclosure');
+  await page.locator('#fault-bit').fill('1024');await page.locator('#fault-inject').click();await expect(page.locator('#fault-status')).toContainText('Bit index');await scan(page,label+' invalid fault bit');
+  await page.locator('#shared-issue').click();await expect(page.locator('#shared-factor')).toBeEnabled();await scan(page,label+' valid employee pairs');await page.locator('#shared-factor').click();await expect(page.locator('#shared-read')).toBeEnabled();await scan(page,label+' insider factors modulus');await page.locator('#shared-read').click();await expect(page.locator('#shared-negative')).toBeVisible();await scan(page,label+' employee negative fixture');
+  await page.locator('#panel-7 details').nth(1).locator('summary').click();await scan(page,label+' retry arithmetic disclosure');
+  await page.locator('#common-encrypt').click();await expect(page.locator('#common-attack')).toBeEnabled();await scan(page,label+' common modulus encrypted');await page.locator('#common-attack').click();await expect(page.locator('#common-status')).toContainText('Attack complete');await scan(page,label+' common modulus recovery');await page.locator('#common-oaep').click();await expect(page.locator('#common-status')).toContainText('Attack complete');await scan(page,label+' OAEP resists recipe');
+  await page.locator('#panel-7 details').nth(2).locator('summary').click();await scan(page,label+' public ciphertext disclosure');
+  await page.locator('#tab-8').click();await scan(page,label+' parity arrival');await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await scan(page,label+' parity setup');for(let i=0;i<16;i++)await page.locator('#parity-step').click();await scan(page,label+' low two bytes');await page.locator('#parity-run').click();await expect(page.locator('#parity-negative')).toBeVisible({timeout:30_000});await scan(page,label+' parity negative fixture');
+  await page.locator('#panel-8 details summary').click();await scan(page,label+' bit-only log');await page.locator('#parity-size').selectOption('2048');await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await page.locator('#parity-run').click();await expect.poll(async()=>Number(await page.locator('#parity-count').textContent())).toBeGreaterThan(0);await page.locator('#parity-cancel').click();await expect(page.locator('#parity-status')).toContainText('Cancelled');await scan(page,label+' cancelled partial real-size recovery');
+  await page.locator('#parity-message').fill('');await page.locator('#parity-setup').click();await expect(page.locator('#parity-status')).toContainText('nonempty');await scan(page,label+' empty refusal');
 }

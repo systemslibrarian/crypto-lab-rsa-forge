@@ -1102,14 +1102,14 @@ async function bbRun(humanOracle: boolean): Promise<void> {
 }
 
 /* ── Byte-by-byte reveal helpers ────────────────────────────── */
-function initByteRevealGrid(k: number): void {
-  const row = document.getElementById('bb-byte-row');
+export function initByteRevealGrid(k: number, prefix = 'bb'): void {
+  const row = document.getElementById(`${prefix}-byte-row`);
   if (!row) return;
   row.textContent = '';
   for (let i = 0; i < k; i++) {
     const cell = document.createElement('div');
     cell.className = 'byte-cell';
-    cell.id = `bb-byte-${i}`;
+    cell.id = `${prefix}-byte-${i}`;
     const hex = document.createElement('span');
     hex.className = 'byte-cell-hex';
     hex.textContent = '??';
@@ -1121,11 +1121,11 @@ function initByteRevealGrid(k: number): void {
   }
 }
 
-function updateByteReveal(a: bigint, b: bigint, k: number): void {
+export function updateByteReveal(a: bigint, b: bigint, k: number, prefix = 'bb', knownLowBits?: number): void {
   const aBytes = bigintToBytes(a, k);
   const bBytes = bigintToBytes(b, k);
   for (let i = 0; i < k; i++) {
-    const cell = document.getElementById(`bb-byte-${i}`);
+    const cell = document.getElementById(`${prefix}-byte-${i}`);
     if (!cell) continue;
     const hex = cell.querySelector('.byte-cell-hex')   as HTMLElement;
     const asc = cell.querySelector('.byte-cell-ascii') as HTMLElement;
@@ -1135,6 +1135,7 @@ function updateByteReveal(a: bigint, b: bigint, k: number): void {
     for (let j = 0; j <= i; j++) {
       if (aBytes[j] !== bBytes[j]) { known = false; break; }
     }
+    if (knownLowBits !== undefined) known = (k - i) * 8 <= knownLowBits;
     if (known) {
       const byte = aBytes[i];
       const newHex = byte.toString(16).padStart(2, '0');
