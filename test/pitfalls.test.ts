@@ -27,6 +27,16 @@ test('one private key pair factors 50 random RSA moduli without p or q input',()
     if(f.attempts.at(-1)!.root!==null){const root=f.attempts.at(-1)!.root!;expect(root*root%k.n).toBe(1n);expect([1n,k.n-1n]).not.toContain(root);}
   }
 },60_000);
+test('a private exponent valid modulo lambda but not phi still exposes the shared modulus',()=>{
+  // RFC 8017 permits ed = 1 mod lambda(N); ed - 1 need not be a multiple of phi(N).
+  const N=3233n,e=17n,d=413n,lambda=780n,phi=3120n;
+  expect((e*d-1n)%lambda).toBe(0n);expect((e*d-1n)%phi).not.toBe(0n);
+  // Exhaustively verify this small key, including messages that are not units.
+  for(let m=0n;m<N;m++)expect(modPow(modPow(m,e,N),d,N)).toBe(m);
+  const f=factorFromKeyPair(N,e,d,()=>1n,1); // fixed base g=3: 3^1755 = 182, 182^2 = 794, 794^2 = 1 mod N
+  expect([f.p,f.q].sort((a,b)=>a<b?-1:1)).toEqual([53n,61n]);
+  expect(f.p*f.q).toBe(N);expect(f.attempts[0].root).toBe(794n);
+});
 test('unsuccessful random bases are retried and counted; bounded failure is honest',()=>{
   const N=61n*53n,e=17n,d=2753n;
   // g=N-2 has a trivial sequence here; enumerate a proven non-factor base.

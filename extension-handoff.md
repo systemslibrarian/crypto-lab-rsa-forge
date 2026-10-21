@@ -75,3 +75,19 @@ Header, theme, footer, existing crypto behavior and deployment workflow remain
 intact. The shared catalog, counsel, census and checker are unchanged. The
 fleet-wide sync result is not re-certified because unrelated checkouts are
 unavailable. The final published SHA and live-byte proof accompany delivery.
+
+## Educational accuracy follow-up
+
+Corrected the general key-pair explanation: ed − 1 must be a multiple of
+λ(N) = lcm(p − 1, q − 1), not necessarily the group order φ(N). The displayed
+fixture still legitimately chooses d modulo φ(N). The new source link is
+[RFC 8017 §3.2](https://www.rfc-editor.org/rfc/rfc8017.html#section-3.2).
+A regression uses N=3233, e=17, d=413: ed−1=7020 is divisible by λ(N)=780,
+but not φ(N)=3120. Every one of the 3,233 messages round-trips, and the
+existing factoring algorithm recovers 53 and 61 from (N,e,d) alone.
+The parity instructions now accurately say to query the original ciphertext
+first and multiply by 2^(−e) before each subsequent query.
+
+Validation: all 55 unit tests, two publishing-request tests and all 35 browser
+tests passed, including independent recovery checks and accessibility.
+No attack algorithm changed.
