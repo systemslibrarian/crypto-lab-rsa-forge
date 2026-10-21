@@ -80,7 +80,7 @@ npm run dev
 
 ```bash
 npm run build      # production build, output in dist/
-npm run deploy     # publish to GitHub Pages (requires gh-pages and repo permissions)
+npm run deploy     # request the existing gated Pages workflow on main (authenticated gh required)
 ```
 
 After `npm run dev`, open http://localhost:5173/crypto-lab-rsa-forge/ in your browser.
