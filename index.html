@@ -501,7 +501,7 @@
         <h3 class="card-title">Side-by-Side — Textbook vs OAEP, Same Plaintext, Twice Each</h3>
         <p class="card-description">
           Encrypt the same plaintext twice with textbook RSA and twice with RSA-OAEP. Compare byte-by-byte.
-          Textbook collides on every byte (deterministic). OAEP differs on every byte (randomized).
+          Textbook collides on every byte (deterministic). OAEP differs in nearly every byte (randomized).
           This is the single picture that makes "use OAEP" non-negotiable.
         </p>
         <div class="button-group">
@@ -672,8 +672,8 @@
       <div class="card" id="oaep-randomize-card" hidden>
         <h3 class="card-title">Randomization — Same Plaintext, Different Ciphertexts</h3>
         <p class="card-description">
-          Unlike textbook RSA, OAEP uses a random seed. Encrypt the same message twice and compare — 
-          ciphertexts are always different, providing IND-CPA security.
+          Unlike textbook RSA, OAEP uses a random seed. Encrypt the same message twice and compare —
+          the ciphertexts differ with overwhelming probability, providing IND-CPA security.
         </p>
         <button id="oaep-randomize" class="btn btn-primary" aria-label="Encrypt the same message twice to demonstrate OAEP randomization">
           Encrypt Same Message Twice
@@ -704,9 +704,9 @@
         <!-- LEVEL 1: the idea, no bytes -->
         <p class="card-description">
           At the highest level, OAEP does one job: take your message plus a fresh
-          <strong>random seed</strong> and scramble them together into one block where <em>every</em> output byte
-          depends on <em>every</em> input byte. Change a single bit of the message or the seed and the entire
-          block changes — so two encryptions of the same message look completely unrelated, and an attacker
+          <strong>random seed</strong> and scramble them together into one block with cryptographic diffusion.
+          Change a single bit of the message or the seed and roughly half of the output bits flip, so most
+          bytes change — two encryptions of the same message look completely unrelated, and an attacker
           can't peel off or tamper with any piece.
         </p>
         <div class="oaep-highlevel" role="group" aria-label="High-level OAEP: seed plus message scrambled into one block">
@@ -720,12 +720,12 @@
         </div>
         <div class="button-group" style="margin-top: 1rem;">
           <button id="oaep-hl-avalanche" class="btn btn-primary" type="button"
-                  aria-label="Flip one input byte and watch the whole scrambled block change (avalanche effect)">
-            Flip one input byte
+                  aria-label="Flip one input bit and watch the scrambled block change (avalanche effect)">
+            Flip one input bit
           </button>
         </div>
         <p class="step-desc" id="oaep-hl-note" style="margin-top: 0.75rem;" aria-live="polite">
-          Press the button to change a single input byte. Watch how many output bytes change — that
+          Press the button to change a single input bit. Watch how many output bits and bytes change — that
           all-or-nothing spread is called the <span class="gloss" tabindex="0" role="button"
           aria-expanded="false" aria-describedby="gloss-body" data-gloss="avalanche">avalanche effect</span>.
         </p>
@@ -742,7 +742,8 @@
             random seed, producing non-determinism and all-or-nothing decoding.
           </p>
           <p class="card-description" style="font-style: italic; color: var(--c-text-faint);">
-            After you run an OAEP encryption above, hover any colored segment to see the actual bytes from that operation.
+            WebCrypto keeps its OAEP seed internal. After encryption, hover a colored segment to inspect a
+            separate, freshly randomized RFC 8017 encoding of the same plaintext — not the hidden encoding used for the ciphertext.
           </p>
         <div class="oaep-diagram" role="group" aria-label="OAEP padding structure diagram" style="position: relative;">
           <div style="margin-bottom: 1rem;">
@@ -882,7 +883,8 @@
           and provides tight security reduction.
         </p>
         <p class="card-description" style="font-style: italic; color: var(--c-text-faint);">
-          After you sign a message above, hover any colored segment to see the actual bytes from that signature.
+          WebCrypto keeps the signature salt internal. After signing, hover a colored segment to inspect a
+          separate, freshly salted RFC 8017 encoding of the same message — not bytes recovered from the signature.
         </p>
         <div class="pss-structure" role="group" aria-label="PSS padding structure visualization" style="position: relative;">
           <div class="pss-row">
@@ -970,8 +972,8 @@
               </tr>
               <tr>
                 <td>TLS 1.3</td>
-                <td>PKCS#1 v1.5 signatures still allowed</td>
-                <td>PSS signatures preferred</td>
+                <td>Not used for TLS 1.3 CertificateVerify</td>
+                <td>Required for RSA CertificateVerify</td>
               </tr>
             </tbody>
           </table>
@@ -1567,13 +1569,13 @@
         </div>
       </div>
 
-      <!-- Why TLS 1.3 removed RSA key exchange -->
+      <!-- Why TLS 1.3 removed static RSA key transport -->
       <div class="card">
-        <h3 class="card-title">Why TLS 1.3 Removed RSA Key Exchange Entirely</h3>
+        <h3 class="card-title">Why TLS 1.3 Removed Static RSA Key Transport</h3>
         <ul style="color: var(--color-text-muted); line-height: 1.8; padding-left: 1.5rem; font-size: 0.9375rem;">
           <li><strong style="color: var(--color-text);">No forward secrecy:</strong> RSA key exchange uses the server's long-term private key to wrap the session key. Compromise of the private key retroactively decrypts all past traffic.</li>
           <li><strong style="color: var(--color-text);">Bleichenbacher variants:</strong> ROBOT (2017) reported vulnerable products from at least eight vendors and open source projects still vulnerable 19 years after the original paper, and the disclosure table has since reached 21 affected vendors and products. The oracle is hard to eliminate from real implementations.</li>
-          <li><strong style="color: var(--color-text);">TLS 1.3 fix:</strong> RSA key exchange (RSA_PSK, RSA) removed. Only ephemeral Diffie-Hellman (ECDHE) allowed — provides forward secrecy by design.</li>
+          <li><strong style="color: var(--color-text);">TLS 1.3 fix:</strong> Static RSA key transport is gone. Certificate-based handshakes establish fresh keys with ephemeral finite-field or elliptic-curve Diffie-Hellman; PSK-only and PSK-with-(EC)DHE modes also exist.</li>
           <li><strong style="color: var(--color-text);">PKCS#1 v1.5 encryption:</strong> RFC 8017 explicitly marks RSA-PKCS1_V1_5 encryption as legacy. Use RSA-OAEP for any new RSA encryption.</li>
         </ul>
         <div class="citation">
@@ -1909,7 +1911,7 @@
 
       <!-- Hybrid crypto timing demo -->
       <div class="card">
-        <h3 class="card-title">Why TLS Doesn't Encrypt the Body With RSA — Live Timing</h3>
+        <h3 class="card-title">Why Bulk Data Uses Symmetric Encryption — Live Timing</h3>
         <p class="card-description">
           RSA-OAEP can only encrypt a few bytes per operation. To send a 1 MB payload you'd have to chunk it
           into thousands of RSA ops. Press the button to time three approaches on 1 MB of random data —
@@ -1934,7 +1936,7 @@
             <div class="hybrid-card-note" id="hybrid-aes-note">—</div>
           </div>
           <div class="hybrid-card hybrid" id="hybrid-hybrid">
-            <div class="hybrid-card-title">Hybrid (what TLS does)</div>
+            <div class="hybrid-card-title">RSA hybrid envelope</div>
             <div class="hybrid-card-config">RSA-OAEP wraps AES key, AES-GCM bulk</div>
             <div><span class="hybrid-card-time" id="hybrid-hybrid-time">—</span> <span class="hybrid-card-unit">ms (measured)</span></div>
             <div class="hybrid-card-note" id="hybrid-hybrid-note">—</div>

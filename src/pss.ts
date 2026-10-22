@@ -6,7 +6,7 @@
  * Specified in RFC 8017 (PKCS#1 v2.2) §8.1, §9.1.
  */
 
-import { announce, show, setText, setLoading, toBase64, toHex } from './ui.js';
+import { announce, show, hide, setText, setLoading, toBase64, toHex } from './ui.js';
 import { pssEncode, type PssFields } from './pss-encode.js';
 
 interface PssKeyPair {
@@ -18,6 +18,19 @@ let pssKey: PssKeyPair | null = null;
 let pssSignature: ArrayBuffer | null = null;
 let pssOriginalMessage = '';
 let lastPssFields: PssFields | null = null;
+let pssRevision = 0;
+
+function retirePssEvidence(): void {
+  pssSignature = null;
+  pssOriginalMessage = '';
+  lastPssFields = null;
+  hide('pss-signature-result');
+  hide('pss-verify-card');
+  hide('pss-verify-output');
+  document.getElementById('pss-tooltip')?.classList.remove('visible');
+  const tooltipBytes = document.getElementById('pss-tooltip-bytes');
+  if (tooltipBytes) tooltipBytes.textContent = 'Sign a message above to see a fresh, independent valid encoding here.';
+}
 
 export function initPssPanel(): void {
   (document.getElementById('pss-gen') as HTMLButtonElement)
@@ -28,6 +41,15 @@ export function initPssPanel(): void {
     .addEventListener('click', () => verifyMessage(false));
   (document.getElementById('pss-verify-tampered') as HTMLButtonElement)
     .addEventListener('click', () => verifyMessage(true));
+
+  const message = document.getElementById('pss-message') as HTMLTextAreaElement;
+  let previousMessage = message.value;
+  message.addEventListener('input', () => {
+    if (message.value === previousMessage) return;
+    previousMessage = message.value;
+    pssRevision++;
+    retirePssEvidence();
+  });
 
   initPssDiagramHover();
 }
@@ -95,7 +117,7 @@ function initPssDiagramHover(): void {
     const field = target.dataset.pssField!;
     labelEl.textContent = PSS_FIELD_LABELS[field] ?? field;
     if (!lastPssFields) {
-      bytesEl.innerHTML = '<span class="diagram-tooltip-empty">Sign a message above to see real bytes here.</span>';
+      bytesEl.innerHTML = '<span class="diagram-tooltip-empty">Sign a message above to see a fresh, independent valid encoding here.</span>';
     } else {
       const bytes = pssFieldBytes(lastPssFields, field);
       if (!bytes) {
@@ -123,6 +145,10 @@ function initPssDiagramHover(): void {
 async function generateKey(): Promise<void> {
   const btn = document.getElementById('pss-gen') as HTMLButtonElement;
   const lbl = btn.getAttribute('aria-label') ?? 'Generate signing key';
+  const revision = ++pssRevision;
+  pssKey = null;
+  retirePssEvidence();
+  hide('pss-sign-section');
   setLoading(btn, true);
   announce('Generating RSA-PSS 2048-bit signing key via WebCrypto…');
 
@@ -138,6 +164,8 @@ async function generateKey(): Promise<void> {
       ['sign', 'verify'],
     ) as CryptoKeyPair;
 
+    if (revision !== pssRevision) return;
+
     pssKey = { publicKey: pair.publicKey, privateKey: pair.privateKey };
 
     const statusEl = document.getElementById('pss-keygen-status');
@@ -146,6 +174,7 @@ async function generateKey(): Promise<void> {
     show('pss-sign-section');
     announce('RSA-PSS 2048-bit signing key generated.');
   } catch (err: unknown) {
+    if (revision !== pssRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     announce(`Key generation failed: ${msg}`);
   } finally {
@@ -167,6 +196,9 @@ async function signMessage(): Promise<void> {
 
   const btn = document.getElementById('pss-sign') as HTMLButtonElement;
   const lbl = btn.getAttribute('aria-label') ?? 'Sign message';
+  const key = pssKey;
+  const revision = ++pssRevision;
+  retirePssEvidence();
   setLoading(btn, true);
   announce('Signing message with RSA-PSS-SHA-256…');
 
@@ -177,16 +209,20 @@ async function signMessage(): Promise<void> {
         name: 'RSA-PSS',
         saltLength: 32, // sLen = hLen for SHA-256 (RFC 8017 §9.1 recommends sLen = hLen)
       },
-      pssKey.privateKey,
+      key.privateKey,
       msgBytes,
     );
+
+    if (revision !== pssRevision || pssKey !== key || msgEl.value !== msg) return;
 
     pssSignature      = sig;
     pssOriginalMessage = msg;
 
-    // Compute PSS-encoded intermediate fields (independent random salt)
-    // so the diagram hover can show real bytes for this message.
+    // WebCrypto does not expose the salt or encoded message behind `sig`.
+    // Compute a separate standards-valid encoding of the same message and
+    // label it as such rather than presenting it as bytes recovered from `sig`.
     try { lastPssFields = await pssEncode(msgBytes); } catch { lastPssFields = null; }
+    if (revision !== pssRevision || pssKey !== key || msgEl.value !== msg) return;
 
     const b64 = toBase64(new Uint8Array(sig));
     setText('pss-signature', b64);
@@ -194,6 +230,7 @@ async function signMessage(): Promise<void> {
     show('pss-verify-card');
     announce(`Message signed. Signature is ${sig.byteLength} bytes.`);
   } catch (err: unknown) {
+    if (revision !== pssRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     announce(`Signing failed: ${msg}`);
   } finally {
@@ -208,11 +245,15 @@ async function verifyMessage(tamper: boolean): Promise<void> {
   const btnId = tamper ? 'pss-verify-tampered' : 'pss-verify-ok';
   const btn = document.getElementById(btnId) as HTMLButtonElement;
   const lbl = btn.getAttribute('aria-label') ?? '';
+  const key = pssKey;
+  const signature = pssSignature;
+  const originalMessage = pssOriginalMessage;
+  const revision = ++pssRevision;
   setLoading(btn, true);
 
   const verifyMsg = tamper
-    ? pssOriginalMessage + ' (tampered)'
-    : pssOriginalMessage;
+    ? originalMessage + ' (tampered)'
+    : originalMessage;
 
   announce(`Verifying signature against ${tamper ? 'tampered' : 'original'} message…`);
 
@@ -220,10 +261,12 @@ async function verifyMessage(tamper: boolean): Promise<void> {
     const msgBytes = new TextEncoder().encode(verifyMsg);
     const valid = await crypto.subtle.verify(
       { name: 'RSA-PSS', saltLength: 32 },
-      pssKey.publicKey,
-      pssSignature,
+      key.publicKey,
+      signature,
       msgBytes,
     );
+
+    if (revision !== pssRevision || pssKey !== key || pssSignature !== signature) return;
 
     const iconEl   = document.getElementById('pss-verify-icon')   as HTMLElement;
     const statusEl = document.getElementById('pss-verify-status') as HTMLElement;
@@ -251,6 +294,7 @@ async function verifyMessage(tamper: boolean): Promise<void> {
     }
     show('pss-verify-output');
   } catch (err: unknown) {
+    if (revision !== pssRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     announce(`Verification error: ${msg}`);
   } finally {

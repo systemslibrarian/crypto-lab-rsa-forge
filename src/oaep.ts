@@ -8,7 +8,7 @@
  * NIST SP 800-57 Part 1 Rev. 5 — 2048-bit minimum, 3072+ for long-term.
  */
 
-import { announce, show, setText, setLoading, toBase64, toHex, truncate } from './ui.js';
+import { announce, show, hide, setText, setLoading, toBase64, toHex, truncate } from './ui.js';
 import { oaepEncode, mgf1, type OaepFields } from './oaep-encode.js';
 
 interface OaepKeyPair {
@@ -20,7 +20,31 @@ interface OaepKeyPair {
 const oaepKeys: Record<number, OaepKeyPair | null> = { 2048: null, 4096: null };
 let lastCiphertext: ArrayBuffer | null = null;
 let lastCiphertextBits = 0;
+let lastCiphertextKey: OaepKeyPair | null = null;
 let lastOaepFields: OaepFields | null = null;
+let oaepRevision = 0;
+
+function syncEncryptButtons(): void {
+  (document.getElementById('oaep-encrypt-2048') as HTMLButtonElement).disabled = !oaepKeys[2048];
+  (document.getElementById('oaep-encrypt-4096') as HTMLButtonElement).disabled = !oaepKeys[4096];
+}
+
+function retireOaepEvidence(): void {
+  lastCiphertext = null;
+  lastCiphertextBits = 0;
+  lastCiphertextKey = null;
+  lastOaepFields = null;
+  hide('oaep-encrypt-result');
+  hide('oaep-decrypt-card');
+  hide('oaep-decrypt-output');
+  hide('oaep-randomize-card');
+  hide('oaep-randomize-result');
+  (document.getElementById('oaep-decrypt-2048') as HTMLButtonElement).disabled = true;
+  (document.getElementById('oaep-decrypt-4096') as HTMLButtonElement).disabled = true;
+  document.getElementById('oaep-tooltip')?.classList.remove('visible');
+  const tooltipBytes = document.getElementById('oaep-tooltip-bytes');
+  if (tooltipBytes) tooltipBytes.textContent = 'Run an OAEP encryption above to see a fresh, independent valid encoding here.';
+}
 
 export function initOaepPanel(): void {
   (document.getElementById('oaep-gen-2048') as HTMLButtonElement)
@@ -41,6 +65,15 @@ export function initOaepPanel(): void {
   (document.getElementById('oaep-randomize') as HTMLButtonElement)
     .addEventListener('click', demonstrateRandomization);
 
+  const plaintext = document.getElementById('oaep-plaintext') as HTMLTextAreaElement;
+  let previousPlaintext = plaintext.value;
+  plaintext.addEventListener('input', () => {
+    if (plaintext.value === previousPlaintext) return;
+    previousPlaintext = plaintext.value;
+    oaepRevision++;
+    retireOaepEvidence();
+  });
+
   initOaepDiagramHover();
   initOaepHighLevel();
 }
@@ -48,7 +81,7 @@ export function initOaepPanel(): void {
 /* ── Level-1 high-level view: seed + message → scrambled block ───
  * Honest avalanche demo. We scramble a small fixed input (seed ‖ message)
  * with real MGF1-SHA256, render the output bytes, then on demand flip ONE
- * input byte and recompute — highlighting every output byte that changed.
+ * input bit and recompute — highlighting every output byte that changed.
  * No faked bytes: this is the same mask primitive OAEP uses internally. */
 const HL_LEN = 24; // illustrative output length in bytes
 let hlSeed = new Uint8Array(8);
@@ -84,31 +117,37 @@ function initOaepHighLevel(): void {
   hlScramble(hlSeed, hlMsg).then((out) => { hlLastOut = out; renderHlBlock(out, null); });
 
   btn.addEventListener('click', async () => {
-    // Flip exactly one input byte (alternate seed vs message so repeat presses
+    // Flip exactly one input bit (alternate seed vs message so repeat presses
     // keep telling the same story) and recompute the whole scrambled block.
     const flipSeed = Math.random() < 0.5;
-    if (flipSeed) hlSeed[Math.floor(Math.random() * hlSeed.length)] ^= 0xff;
+    if (flipSeed) hlSeed[Math.floor(Math.random() * hlSeed.length)] ^= 0x01;
     else          hlMsg[Math.floor(Math.random() * hlMsg.length)]  ^= 0x01;
 
     const out = await hlScramble(hlSeed, hlMsg);
     let diff = 0;
+    let bitDiff = 0;
     const changed = new Array<boolean>(out.length).fill(false);
     if (hlLastOut) {
       for (let i = 0; i < out.length; i++) {
-        if (out[i] !== hlLastOut[i]) { changed[i] = true; diff++; }
+        const xor = out[i] ^ hlLastOut[i];
+        if (xor !== 0) { changed[i] = true; diff++; }
+        let bits = xor;
+        while (bits !== 0) { bitDiff += bits & 1; bits >>>= 1; }
       }
     }
     hlLastOut = out;
     renderHlBlock(out, changed);
 
-    const pct = Math.round((diff / out.length) * 100);
+    const bytePct = Math.round((diff / out.length) * 100);
+    const bitPct = Math.round((bitDiff / (out.length * 8)) * 100);
     setText(
       'oaep-hl-note',
-      `Flipped one ${flipSeed ? 'random-seed' : 'message'} byte → ${diff} of ${out.length} ` +
-      `output bytes changed (~${pct}%). Roughly half flip every time — that is the avalanche effect. ` +
+      `Flipped one ${flipSeed ? 'random-seed' : 'message'} bit → ${diff} of ${out.length} ` +
+      `output bytes changed (~${bytePct}%); ${bitDiff} of ${out.length * 8} output bits flipped (~${bitPct}%). ` +
+      `A cryptographic avalanche changes roughly half the bits, so most output bytes differ. ` +
       `Because the seed is random on every real encryption, the block is different each time even for the same message.`,
     );
-    announce(`One input byte flipped; ${diff} of ${out.length} output bytes changed.`);
+    announce(`One input bit flipped; ${diff} of ${out.length} output bytes changed.`);
   });
 }
 
@@ -175,7 +214,7 @@ function initOaepDiagramHover(): void {
     const field = target.dataset.oaepField!;
     labelEl.textContent = OAEP_FIELD_LABELS[field] ?? field;
     if (!lastOaepFields) {
-      bytesEl.innerHTML = '<span class="diagram-tooltip-empty">Run an OAEP encryption above to see real bytes here.</span>';
+      bytesEl.innerHTML = '<span class="diagram-tooltip-empty">Run an OAEP encryption above to see a fresh, independent valid encoding here.</span>';
     } else {
       const bytes = fieldBytes(lastOaepFields, field);
       if (!bytes) {
@@ -204,6 +243,10 @@ async function generateKey(bits: 2048 | 4096): Promise<void> {
   const btnId = `oaep-gen-${bits}`;
   const btn = document.getElementById(btnId) as HTMLButtonElement;
   const originalLabel = btn.getAttribute('aria-label') ?? `Generate ${bits}-bit RSA key`;
+  const revision = ++oaepRevision;
+  oaepKeys[bits] = null;
+  retireOaepEvidence();
+  syncEncryptButtons();
   setLoading(btn, true);
   announce(`Generating ${bits}-bit RSA-OAEP key pair via WebCrypto…`);
 
@@ -220,6 +263,8 @@ async function generateKey(bits: 2048 | 4096): Promise<void> {
       ['encrypt', 'decrypt'],
     ) as CryptoKeyPair;
 
+    if (revision !== oaepRevision) return;
+
     const kgTime = Math.round(performance.now() - t0);
     oaepKeys[bits] = {
       publicKey:  pair.publicKey,
@@ -231,13 +276,12 @@ async function generateKey(bits: 2048 | 4096): Promise<void> {
     setText(`oaep-${bits}-kg-time`, String(kgTime));
     show(`oaep-${bits}-timing`);
 
-    // Enable encrypt buttons
-    (document.getElementById('oaep-encrypt-2048') as HTMLButtonElement).disabled = !oaepKeys[2048];
-    (document.getElementById('oaep-encrypt-4096') as HTMLButtonElement).disabled = !oaepKeys[4096];
+    syncEncryptButtons();
 
     show('oaep-encrypt-card');
     announce(`${bits}-bit RSA-OAEP key pair generated in ${kgTime} ms.`);
   } catch (err: unknown) {
+    if (revision !== oaepRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     announce(`Key generation failed: ${msg}`);
   } finally {
@@ -251,7 +295,8 @@ async function doEncrypt(bits: 2048 | 4096): Promise<void> {
   if (!kp) { announce('Generate the key first.'); return; }
 
   const input = document.getElementById('oaep-plaintext') as HTMLTextAreaElement;
-  const pt = new TextEncoder().encode(input.value);
+  const plaintext = input.value;
+  const pt = new TextEncoder().encode(plaintext);
 
   // OAEP-SHA256 max plaintext: k − 2*hLen − 2 bytes = modBytes − 66 bytes
   const maxBytes = bits / 8 - 66;
@@ -263,20 +308,26 @@ async function doEncrypt(bits: 2048 | 4096): Promise<void> {
   const btnId = `oaep-encrypt-${bits}`;
   const btn = document.getElementById(btnId) as HTMLButtonElement;
   const lbl = btn.getAttribute('aria-label') ?? '';
+  const revision = ++oaepRevision;
+  retireOaepEvidence();
   setLoading(btn, true);
   announce(`Encrypting with RSA-${bits}-OAEP…`);
 
   const t0 = performance.now();
   try {
     const ct = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, kp.publicKey, pt);
+    if (revision !== oaepRevision || oaepKeys[bits] !== kp || input.value !== plaintext) return;
     const encTime = Math.round(performance.now() - t0);
 
     lastCiphertext     = ct;
     lastCiphertextBits = bits;
+    lastCiphertextKey  = kp;
 
-    // Compute the OAEP-encoded intermediate fields (independent random seed)
-    // so the diagram hover can show real bytes for the user's plaintext.
+    // WebCrypto does not expose the OAEP seed or encoded message it used.
+    // Compute a separate standards-valid encoding of the same plaintext and
+    // label it as such rather than presenting it as internals from `ct`.
     try { lastOaepFields = await oaepEncode(pt, bits / 8); } catch { lastOaepFields = null; }
+    if (revision !== oaepRevision || oaepKeys[bits] !== kp) return;
 
     const b64 = toBase64(new Uint8Array(ct));
     setText('oaep-ciphertext', b64);
@@ -293,6 +344,7 @@ async function doEncrypt(bits: 2048 | 4096): Promise<void> {
     show('oaep-randomize-card');
     announce(`Encrypted in ${encTime} ms. Ciphertext is ${ct.byteLength} bytes.`);
   } catch (err: unknown) {
+    if (revision !== oaepRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     announce(`Encryption failed: ${msg}`);
   } finally {
@@ -304,7 +356,7 @@ async function doEncrypt(bits: 2048 | 4096): Promise<void> {
 async function doDecrypt(bits: 2048 | 4096): Promise<void> {
   const kp = oaepKeys[bits];
   if (!kp || !lastCiphertext) { announce('Encrypt a message first.'); return; }
-  if (lastCiphertextBits !== bits) {
+  if (lastCiphertextBits !== bits || lastCiphertextKey !== kp) {
     announce(`Ciphertext was encrypted with ${lastCiphertextBits}-bit key. Cannot decrypt with ${bits}-bit key.`);
     return;
   }
@@ -312,12 +364,15 @@ async function doDecrypt(bits: 2048 | 4096): Promise<void> {
   const btnId = `oaep-decrypt-${bits}`;
   const btn = document.getElementById(btnId) as HTMLButtonElement;
   const lbl = btn.getAttribute('aria-label') ?? '';
+  const revision = ++oaepRevision;
+  const ciphertext = lastCiphertext;
   setLoading(btn, true);
   announce(`Decrypting with RSA-${bits}-OAEP…`);
 
   const t0 = performance.now();
   try {
-    const pt = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, kp.privateKey, lastCiphertext);
+    const pt = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, kp.privateKey, ciphertext);
+    if (revision !== oaepRevision || lastCiphertext !== ciphertext || lastCiphertextKey !== kp) return;
     const decTime = Math.round(performance.now() - t0);
     const text = new TextDecoder().decode(pt);
 
@@ -335,6 +390,7 @@ async function doDecrypt(bits: 2048 | 4096): Promise<void> {
     show('oaep-decrypt-output');
     announce(`Decrypted successfully in ${decTime} ms. Recovered: "${text}"`);
   } catch (err: unknown) {
+    if (revision !== oaepRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     const outputEl = document.getElementById('oaep-decrypt-output') as HTMLElement;
     const statusEl = document.getElementById('oaep-decrypt-status') as HTMLElement;
@@ -361,7 +417,8 @@ async function demonstrateRandomization(): Promise<void> {
   }
 
   const input = document.getElementById('oaep-plaintext') as HTMLTextAreaElement;
-  const pt = new TextEncoder().encode(input.value);
+  const plaintext = input.value;
+  const pt = new TextEncoder().encode(plaintext);
   const maxBytes = bits / 8 - 66;
   if (pt.length > maxBytes) {
     announce('Message too long for randomization demo.');
@@ -370,6 +427,7 @@ async function demonstrateRandomization(): Promise<void> {
 
   const btn = document.getElementById('oaep-randomize') as HTMLButtonElement;
   const lbl = btn.getAttribute('aria-label') ?? '';
+  const revision = ++oaepRevision;
   setLoading(btn, true);
   announce('Encrypting same message twice to demonstrate randomization…');
 
@@ -378,6 +436,7 @@ async function demonstrateRandomization(): Promise<void> {
       crypto.subtle.encrypt({ name: 'RSA-OAEP' }, kp.publicKey, pt),
       crypto.subtle.encrypt({ name: 'RSA-OAEP' }, kp.publicKey, pt),
     ]);
+    if (revision !== oaepRevision || oaepKeys[bits] !== kp || input.value !== plaintext) return;
 
     const b64_1 = toBase64(new Uint8Array(ct1));
     const b64_2 = toBase64(new Uint8Array(ct2));
@@ -387,16 +446,17 @@ async function demonstrateRandomization(): Promise<void> {
     setText('oaep-ct2-short', truncate(b64_2, 52));
 
     const matchEl = document.getElementById('oaep-ct-match') as HTMLElement;
-    matchEl.textContent = match ? '⚠ YES (unexpected)' : '✓ NO — different every time';
+    matchEl.textContent = match ? '⚠ YES — rare seed collision' : '✓ NO — fresh randomized encryption';
     matchEl.style.color = match ? 'var(--c-danger)' : 'var(--c-safe)';
 
     show('oaep-randomize-result');
     announce(
       match
-        ? 'Warning: ciphertexts matched unexpectedly.'
-        : 'Confirmed: two encryptions of the same plaintext produce different ciphertexts.',
+        ? 'The ciphertexts matched; this is possible only when OAEP randomness repeats.'
+        : 'Confirmed: fresh OAEP randomness produced different ciphertexts for the same plaintext.',
     );
   } catch (err: unknown) {
+    if (revision !== oaepRevision) return;
     const msg = err instanceof Error ? err.message : String(err);
     announce(`Randomization demo failed: ${msg}`);
   } finally {

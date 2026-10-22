@@ -451,9 +451,9 @@ test('OAEP randomization verdict: same plaintext, different ciphertext', async (
   const ct2 = await textOf(page, '#oaep-ct2-short');
   expect(ct1).not.toBe('—');
   expect(ct1).not.toBe(ct2);
-  await expect(page.locator('#oaep-ct-match')).toHaveText('✓ NO — different every time');
+  await expect(page.locator('#oaep-ct-match')).toHaveText('✓ NO — fresh randomized encryption');
   await expect(page.locator('#aria-live')).toContainText(
-    'two encryptions of the same plaintext produce different ciphertexts',
+    'fresh OAEP randomness produced different ciphertexts for the same plaintext',
   );
 });
 
@@ -471,25 +471,37 @@ test('OAEP avalanche counter matches the bytes it actually highlighted', async (
   const after = await cells.allTextContents();
   expect(after).toHaveLength(24);
 
-  // Recount the diff by hand from the rendered hex, then check every number the
-  // page printed against it: the claimed count, the claimed percentage, and the
-  // number of cells it painted as changed.
+  // Recount both byte changes and bit flips from the rendered hex, then check
+  // every number the page printed and every cell it painted as changed.
   let handCounted = 0;
-  for (let i = 0; i < 24; i++) if (before[i] !== after[i]) handCounted++;
+  let handCountedBits = 0;
+  for (let i = 0; i < 24; i++) {
+    if (before[i] !== after[i]) handCounted++;
+    let xor = Number.parseInt(before[i], 16) ^ Number.parseInt(after[i], 16);
+    while (xor !== 0) { handCountedBits += xor & 1; xor >>>= 1; }
+  }
 
   const note = await textOf(page, '#oaep-hl-note');
-  const m = note.match(/→ (\d+) of (\d+) output bytes changed \(~(\d+)%\)/);
+  const m = note.match(/→ (\d+) of (\d+) output bytes changed \(~(\d+)%\); (\d+) of (\d+) output bits flipped \(~(\d+)%\)/);
   expect(m, `unexpected note: ${note}`).not.toBeNull();
   const claimed = Number(m![1]);
   const total = Number(m![2]);
   const pct = Number(m![3]);
+  const claimedBits = Number(m![4]);
+  const totalBits = Number(m![5]);
+  const bitPct = Number(m![6]);
 
   expect(total).toBe(24);
   expect(claimed).toBe(handCounted);
   expect(pct).toBe(Math.round((claimed / total) * 100));
+  expect(claimedBits).toBe(handCountedBits);
+  expect(totalBits).toBe(192);
+  expect(bitPct).toBe(Math.round((claimedBits / totalBits) * 100));
   expect(await page.locator('#oaep-hl-block .oaep-hl-byte.changed').count()).toBe(claimed);
-  // One flipped input byte should scramble roughly half the block, not a corner.
+  // One flipped input bit should alter most bytes and roughly half the bits.
   expect(claimed).toBeGreaterThanOrEqual(18);
+  expect(claimedBits).toBeGreaterThanOrEqual(48);
+  expect(claimedBits).toBeLessThanOrEqual(144);
   await expect(page.locator('#aria-live')).toContainText(
     `${claimed} of ${total} output bytes changed`,
   );
@@ -540,6 +552,113 @@ test('PSS accepts the original message and rejects the tampered one, with reason
   await expect(page.locator('#aria-live')).toContainText(
     'Signature correctly rejected — tampered message detected.',
   );
+});
+
+test('textbook, OAEP and PSS evidence retires when its key or message changes', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  await load(page);
+
+  // Textbook ciphertext, decryption and determinism all belong to one key and
+  // one input. Neither an edit nor a fresh key may leave them on screen.
+  await page.locator('#tb-gen-small').click();
+  await expect(page.locator('#tb-gen-small')).toBeEnabled();
+  await page.locator('#tb-plaintext').fill('Hi');
+  await page.locator('#tb-encrypt').click();
+  await page.locator('#tb-decrypt').click();
+  await page.locator('#tb-determinism').click();
+  await expect(page.locator('#tb-encrypt-result')).toBeVisible();
+  await expect(page.locator('#tb-decrypt-section')).toBeVisible();
+  await expect(page.locator('#tb-determinism-result')).toBeVisible();
+  await page.locator('#tb-plaintext').fill('Ho');
+  await expect(page.locator('#tb-encrypt-result')).toBeHidden();
+  await expect(page.locator('#tb-decrypt-section')).toBeHidden();
+  await expect(page.locator('#tb-determinism-result')).toBeHidden();
+  await page.locator('#tb-encrypt').click();
+  await expect(page.locator('#tb-encrypt-result')).toBeVisible();
+  await page.locator('#tb-gen-small').click();
+  await expect(page.locator('#tb-encrypt-result')).toBeHidden();
+  await expect(page.locator('#tb-decrypt-section')).toBeHidden();
+  await expect(page.locator('#tb-gen-small')).toBeEnabled();
+
+  // WebCrypto does not expose its OAEP seed. The diagram is explicitly a
+  // separate valid encoding, and it too disappears with the source evidence.
+  await openPanel(page, 2);
+  const oaepPanel = await textOf(page, '#panel-2');
+  expect(oaepPanel).toContain('separate, freshly randomized RFC 8017 encoding');
+  expect(oaepPanel).not.toContain('actual bytes from that operation');
+  await page.locator('#oaep-gen-2048').click();
+  await expect(page.locator('#oaep-encrypt-2048')).toBeEnabled({ timeout: 60_000 });
+  await page.locator('#oaep-plaintext').fill('bound OAEP evidence');
+  await page.locator('#oaep-encrypt-2048').click();
+  await expect(page.locator('#oaep-encrypt-result')).toBeVisible();
+  await page.locator('#oaep-decrypt-2048').click();
+  await expect(page.locator('#oaep-decrypt-output')).toBeVisible();
+  await page.locator('#oaep-randomize').click();
+  await expect(page.locator('#oaep-randomize-result')).toBeVisible();
+  await page.locator('#oaep-plaintext').fill('edited OAEP evidence');
+  await expect(page.locator('#oaep-encrypt-result')).toBeHidden();
+  await expect(page.locator('#oaep-decrypt-card')).toBeHidden();
+  await expect(page.locator('#oaep-randomize-card')).toBeHidden();
+  await expect(page.locator('#oaep-decrypt-2048')).toBeDisabled();
+  await page.locator('details.oaep-details summary').click();
+  await page.locator('[data-oaep-field="maskedDB"]').first().focus();
+  await expect(page.locator('#oaep-tooltip-bytes')).toContainText('fresh, independent valid encoding');
+  await page.locator('#oaep-encrypt-2048').click();
+  await expect(page.locator('#oaep-encrypt-result')).toBeVisible();
+  await page.locator('#oaep-gen-2048').click();
+  await expect(page.locator('#oaep-encrypt-result')).toBeHidden();
+  await expect(page.locator('#oaep-decrypt-card')).toBeHidden();
+  await expect(page.locator('#oaep-gen-2048')).toBeEnabled({ timeout: 60_000 });
+
+  // PSS signatures and their independently salted diagram are bound to both
+  // the signing key and exact textarea contents.
+  await openPanel(page, 3);
+  const pssPanel = await textOf(page, '#panel-3');
+  expect(pssPanel).toContain('separate, freshly salted RFC 8017 encoding');
+  expect(pssPanel).not.toContain('actual bytes from that signature');
+  await page.locator('#pss-gen').click();
+  await expect(page.locator('#pss-sign-section')).toBeVisible({ timeout: 60_000 });
+  await page.locator('#pss-message').fill('bound PSS evidence');
+  await page.locator('#pss-sign').click();
+  await expect(page.locator('#pss-signature-result')).toBeVisible();
+  await page.locator('#pss-verify-ok').click();
+  await expect(page.locator('#pss-verify-output')).toBeVisible();
+  await page.locator('#pss-message').dispatchEvent('input');
+  await expect(page.locator('#pss-signature-result')).toBeVisible();
+  await page.locator('#pss-message').fill('edited PSS evidence');
+  await expect(page.locator('#pss-signature-result')).toBeHidden();
+  await expect(page.locator('#pss-verify-card')).toBeHidden();
+  await page.locator('[data-pss-field="maskedDB"]').first().focus();
+  await expect(page.locator('#pss-tooltip-bytes')).toContainText('fresh, independent valid encoding');
+  await page.locator('#pss-sign').click();
+  await expect(page.locator('#pss-signature-result')).toBeVisible();
+  await page.locator('#pss-gen').click();
+  await expect(page.locator('#pss-signature-result')).toBeHidden();
+  await expect(page.locator('#pss-verify-card')).toBeHidden();
+  await expect(page.locator('#pss-gen')).toBeEnabled({ timeout: 60_000 });
+});
+
+test('the RSA envelope copy distinguishes JWE and S/MIME from TLS 1.3 and native age', async ({
+  page,
+}) => {
+  await load(page);
+
+  await openPanel(page, 3);
+  const signaturePanel = await textOf(page, '#panel-3');
+  expect(signaturePanel).toContain('Not used for TLS 1.3 CertificateVerify');
+  expect(signaturePanel).toContain('Required for RSA CertificateVerify');
+
+  await openPanel(page, 5);
+  const oraclePanel = await textOf(page, '#panel-5');
+  expect(oraclePanel).toContain('Static RSA key transport is gone');
+  expect(oraclePanel).toContain('PSK-only and PSK-with-(EC)DHE modes also exist');
+  expect(oraclePanel).not.toContain('Only ephemeral Diffie-Hellman (ECDHE) allowed');
+
+  await openPanel(page, 6);
+  await expect(page.locator('#hybrid-hybrid .hybrid-card-title')).toHaveText('RSA hybrid envelope');
+  expect(await textOf(page, '#panel-6')).not.toContain('Hybrid (what TLS does)');
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -960,7 +1079,9 @@ test('hybrid benchmark: projection matches its own sample, and hybrid beats RSA-
   expect(Math.abs(Number(aesSpeedup![1]) - rsaMs / aesMs)).toBeLessThan(
     Math.max(2, (rsaMs / aesMs) * 0.05),
   );
-  expect(takeaway).toContain('RSA is for key transport, AES is for bulk data');
+  expect(takeaway).toContain('This RSA-OAEP/AES-GCM envelope is available in JWE and S/MIME');
+  expect(takeaway).toContain('TLS 1.3 and native age');
+  expect(takeaway).toContain('they do not use this RSA/AES construction');
   await expect(page.locator('#hybrid-hybrid-note')).toHaveText(
     '1 RSA wrap + 1 AES-GCM bulk = constant asymmetric cost',
   );
