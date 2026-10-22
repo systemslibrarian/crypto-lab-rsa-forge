@@ -644,15 +644,21 @@ test('the RSA envelope copy distinguishes JWE and S/MIME from TLS 1.3 and native
   page,
 }) => {
   await load(page);
+
+  await openPanel(page, 3);
+  const signaturePanel = await textOf(page, '#panel-3');
+  expect(signaturePanel).toContain('Not used for TLS 1.3 CertificateVerify');
+  expect(signaturePanel).toContain('Required for RSA CertificateVerify');
+
+  await openPanel(page, 5);
+  const oraclePanel = await textOf(page, '#panel-5');
+  expect(oraclePanel).toContain('Static RSA key transport is gone');
+  expect(oraclePanel).toContain('PSK-only and PSK-with-(EC)DHE modes also exist');
+  expect(oraclePanel).not.toContain('Only ephemeral Diffie-Hellman (ECDHE) allowed');
+
   await openPanel(page, 6);
   await expect(page.locator('#hybrid-hybrid .hybrid-card-title')).toHaveText('RSA hybrid envelope');
-  const panel = await textOf(page, '#panel-6');
-  expect(panel).not.toContain('Hybrid (what TLS does)');
-  expect(panel).toContain('Not used for TLS 1.3 CertificateVerify');
-  expect(panel).toContain('Required for RSA CertificateVerify');
-  expect(panel).toContain('Static RSA key transport is gone');
-  expect(panel).toContain('PSK-only and PSK-with-(EC)DHE modes also exist');
-  expect(panel).not.toContain('Only ephemeral Diffie-Hellman (ECDHE) allowed');
+  expect(await textOf(page, '#panel-6')).not.toContain('Hybrid (what TLS does)');
 });
 
 /* ══════════════════════════════════════════════════════════════
