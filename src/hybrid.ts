@@ -6,8 +6,9 @@
  *     (You cannot actually encrypt 1 MB with RSA in any reasonable way;
  *      this is the cost a naïve implementation would pay.)
  *  2. AES-256-GCM only — single key, full payload.
- *  3. Hybrid (what TLS / S/MIME / age all do) — RSA-OAEP wraps a fresh
- *     AES key, then AES-GCM encrypts the bulk.
+ *  3. RSA hybrid envelope — RSA-OAEP wraps a fresh AES key, then AES-GCM
+ *     encrypts the bulk. JWE and S/MIME support this construction; modern
+ *     TLS and native age use different key-establishment primitives.
  */
 
 import { announce, show, setText, setLoading } from './ui.js';
@@ -106,7 +107,8 @@ async function runHybrid(): Promise<void> {
     takeawayEl.textContent =
       `RSA-only would take ~${formatMs(rsaProjectedMs)} ms to encrypt 1 MB — about ${speedup.toFixed(0)}× slower than the hybrid scheme ` +
       `(${formatMs(hybridMs)} ms) and ${aesSpeedup.toFixed(0)}× slower than pure AES (${formatMs(aesMs)} ms). ` +
-      `TLS, S/MIME, age, and JWE all use the hybrid pattern for exactly this reason: RSA is for key transport, AES is for bulk data.`;
+      `This RSA-OAEP/AES-GCM envelope is available in JWE and S/MIME. TLS 1.3 and native age use the same broad ` +
+      `asymmetric-key-establishment plus symmetric-payload pattern with different primitives; they do not use this RSA/AES construction.`;
 
     show('hybrid-results');
     show('hybrid-takeaway');

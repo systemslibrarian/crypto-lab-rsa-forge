@@ -65,7 +65,7 @@ async function runContrast(): Promise<void> {
     const tbSummary   = document.getElementById('det-tb-summary')   as HTMLElement;
     const oaepSummary = document.getElementById('det-oaep-summary') as HTMLElement;
     tbSummary.innerHTML   = `<strong>${tbDiffs} of ${tbBytes1.length} bytes differ.</strong> Same input → identical ciphertext, every time. An attacker who knows a candidate plaintext just checks the ciphertext.`;
-    oaepSummary.innerHTML = `<strong>${oaepDiffs} of ${SHOW_BYTES * 2} bytes differ.</strong> Same input → completely different ciphertext. IND-CPA secure: the attacker learns nothing from comparing ciphertexts.`;
+    oaepSummary.innerHTML = `<strong>${oaepDiffs} of ${SHOW_BYTES * 2} bytes differ.</strong> Same input → independently randomized ciphertext. IND-CPA secure: the attacker learns nothing from comparing ciphertexts.`;
 
     show('det-contrast-grid');
     announce(`Contrast complete. Textbook: ${tbDiffs} of ${tbBytes1.length} bytes differ. OAEP: ${oaepDiffs} of ${SHOW_BYTES * 2} bytes differ.`);

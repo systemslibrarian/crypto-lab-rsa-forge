@@ -805,7 +805,7 @@ async function openPanel(page: Page, n: number): Promise<void> {
  *    an enabled `#bb-abort`.
  *
  *  - THE STATES ONLY A GENERATED VALUE REACHES. The padding-diagram tooltips
- *    render `Run an OAEP encryption above to see real bytes here.` before an
+ *    render the independent-encoding prompt before an
  *    encryption and a grouped hex dump after it — two different renderings of
  *    the same node, and the empty one is the one a reader meets first.
  *
@@ -894,12 +894,13 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await expect(page.locator('#det-oaep-ct1 .det-byte')).toHaveCount(32);
   await scanAt('the 128-byte determinism contrast grid, textbook beside OAEP');
 
-  // A 512-bit key REPLACES the 64-bit one without clearing the ciphertext it
-  // produced, so this is also the state where a stale result sits under a key
-  // that did not generate it.
+  // A fresh key must retire every result produced under the old one.
   await page.click('#tb-gen-large');
   await expect(page.locator('#tb-gen-large')).toBeEnabled({ timeout: 120_000 });
   await expect(page.locator('#tb-n')).not.toHaveText('—');
+  await expect(page.locator('#tb-encrypt-result')).toBeHidden();
+  await expect(page.locator('#tb-decrypt-section')).toBeHidden();
+  await expect(page.locator('#tb-determinism-result')).toBeHidden();
   await scanAt('a 512-bit textbook key, every value an order of magnitude longer');
 
   // ── Panel 2: RSA-OAEP ───────────────────────────────────────────────────
@@ -920,7 +921,7 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await page.locator('[data-oaep-field="maskedDB"]').first().focus();
   await expect(page.locator('#oaep-tooltip')).toHaveClass(/visible/);
   await expect(page.locator('#oaep-tooltip-bytes')).toContainText(
-    'Run an OAEP encryption above to see real bytes here.'
+    'Run an OAEP encryption above to see a fresh, independent valid encoding here.'
   );
   await scanAt('OAEP field tooltip, before any encryption');
 
@@ -965,18 +966,18 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await page.click('#oaep-randomize');
   await expect(page.locator('#oaep-randomize')).toBeEnabled();
   await expect(page.locator('#oaep-randomize-result')).toBeVisible();
-  await expect(page.locator('#oaep-ct-match')).toHaveText('✓ NO — different every time');
+  await expect(page.locator('#oaep-ct-match')).toHaveText('✓ NO — fresh randomized encryption');
   await scanAt('OAEP randomization — two different ciphertexts for one message');
 
-  // Regenerating the key strands the ciphertext, which is the ONLY route to the
-  // failure rendering of the decrypt output.
+  // Regenerating the key retires the old ciphertext instead of leaving a
+  // decrypt button that can only fail under the replacement key.
   await page.click('#oaep-gen-2048');
   await expect(page.locator('#oaep-gen-2048')).toBeEnabled({ timeout: 120_000 });
-  await page.click('#oaep-decrypt-2048');
-  await expect(page.locator('#oaep-decrypt-2048')).toBeEnabled();
-  await expect(page.locator('#oaep-decrypt-output')).toHaveClass(/result-box-error/);
-  await expect(page.locator('#oaep-decrypt-status')).toHaveText('✗ Decryption failed');
-  await scanAt('OAEP decryption FAILED — the error rendering of the result box');
+  await expect(page.locator('#oaep-encrypt-result')).toBeHidden();
+  await expect(page.locator('#oaep-decrypt-card')).toBeHidden();
+  await expect(page.locator('#oaep-randomize-card')).toBeHidden();
+  await expect(page.locator('#oaep-decrypt-2048')).toBeDisabled();
+  await scanAt('fresh OAEP key — all evidence from the previous key retired');
 
   await page.click('#oaep-gen-4096');
   await expect(page.locator('#oaep-gen-4096')).toBeEnabled({ timeout: 180_000 });
@@ -995,7 +996,7 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await page.locator('[data-pss-field="maskedDB"]').first().focus();
   await expect(page.locator('#pss-tooltip')).toHaveClass(/visible/);
   await expect(page.locator('#pss-tooltip-bytes')).toContainText(
-    'Sign a message above to see real bytes here.'
+    'Sign a message above to see a fresh, independent valid encoding here.'
   );
   await scanAt('PSS field tooltip, before any signature');
 
