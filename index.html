@@ -306,10 +306,10 @@
           it only inverts if you know d.
         </p>
         <div class="button-group">
-          <button id="tb-gen-small" class="btn btn-primary" aria-label="Generate small RSA key using 32-bit primes for visualization">
+          <button id="tb-gen-small" class="btn btn-primary" aria-label="Generate Small Key (32-bit primes): for visualization">
             Generate Small Key (32-bit primes)
           </button>
-          <button id="tb-gen-large" class="btn btn-secondary" aria-label="Generate larger RSA key using 256-bit primes, producing a 512-bit modulus">
+          <button id="tb-gen-large" class="btn btn-secondary" aria-label="Generate Larger Key (256-bit primes): producing a 512-bit modulus">
             Generate Larger Key (256-bit primes)
           </button>
         </div>
@@ -389,7 +389,7 @@
               <div class="step-label">n = p × q (freshly generated, real primes)</div>
               <div class="step-value large-number-inline" id="tb-factor-n">—</div>
             </div>
-            <button id="tb-factor-run" class="btn btn-primary" aria-label="Brute-force factor the tiny demo modulus n by trial division">
+            <button id="tb-factor-run" class="btn btn-primary" aria-label="Try to factor n: brute-force the tiny demo modulus by trial division">
               Try to factor n
             </button>
             <div id="tb-factor-result" class="factor-result" role="status" aria-live="polite" hidden>
@@ -409,7 +409,7 @@
               </div>
             </div>
             <button class="btn btn-secondary" type="button" disabled
-                    aria-label="Factoring a 2048-bit modulus is computationally infeasible and is disabled">
+                    aria-label="…now try the 2048-bit n: factoring a 2048-bit modulus is computationally infeasible and is disabled">
               …now try the 2048-bit n
             </button>
             <div class="factor-result">
@@ -446,7 +446,7 @@
                 Keep short — message is treated as a raw integer m.
               </div>
             </div>
-            <button id="tb-encrypt" class="btn btn-primary" aria-label="Encrypt plaintext message with textbook RSA">
+            <button id="tb-encrypt" class="btn btn-primary" aria-label="Encrypt (me mod n): the plaintext message, with textbook RSA">
               Encrypt (m<sup>e</sup> mod n)
             </button>
             <div id="tb-encrypt-result" class="crypto-value-container" style="margin-top: 1rem;" hidden>
@@ -460,7 +460,7 @@
                 <div class="crypto-value-label">Decrypted plaintext</div>
                 <div class="crypto-value" id="tb-decrypted" role="status" aria-live="polite" aria-label="Decrypted message"></div>
               </div>
-              <button id="tb-decrypt" class="btn btn-secondary" style="margin-bottom: 1rem;" aria-label="Decrypt ciphertext back to plaintext">
+              <button id="tb-decrypt" class="btn btn-secondary" style="margin-bottom: 1rem;" aria-label="Decrypt (cd mod n): the ciphertext back to plaintext">
                 Decrypt (c<sup>d</sup> mod n)
               </button>
             </div>
@@ -473,7 +473,7 @@
           <p class="card-description" style="margin-bottom: 1rem;">
             Encrypt the same message twice. The ciphertext is always identical — a fatal flaw.
           </p>
-          <button id="tb-determinism" class="btn btn-ghost" aria-label="Demonstrate RSA determinism by encrypting the same message twice and comparing ciphertexts">
+          <button id="tb-determinism" class="btn btn-ghost" aria-label="Demonstrate Same-Plaintext Attack: RSA determinism, by encrypting the same message twice and comparing ciphertexts">
             Demonstrate Same-Plaintext Attack
           </button>
           <div id="tb-determinism-result" style="margin-top: 1rem;" hidden aria-live="polite">
@@ -505,7 +505,7 @@
           This is the single picture that makes "use OAEP" non-negotiable.
         </p>
         <div class="button-group">
-          <button id="det-run" class="btn btn-primary" aria-label="Run side-by-side determinism contrast between textbook RSA and RSA-OAEP">
+          <button id="det-run" class="btn btn-primary" aria-label="Run Side-by-Side Contrast: determinism in textbook RSA against RSA-OAEP">
             Run Side-by-Side Contrast
           </button>
         </div>
@@ -589,7 +589,7 @@
           <div>
             <h4 style="font-weight: 700; margin-bottom: 0.75rem;">RSA-2048</h4>
             <p class="card-description" style="font-size: 0.875rem;">~112-bit classical security (SP 800-57 security strength 112)</p>
-            <button id="oaep-gen-2048" class="btn btn-primary" aria-label="Generate 2048-bit RSA key pair for OAEP encryption">
+            <button id="oaep-gen-2048" class="btn btn-primary" aria-label="Generate 2048-bit Key Pair: an RSA key pair for OAEP encryption">
               Generate 2048-bit Key Pair
             </button>
             <div id="oaep-2048-timing" class="timing-display" style="margin-top: 1rem;" hidden>
@@ -613,7 +613,7 @@
           <div>
             <h4 style="font-weight: 700; margin-bottom: 0.75rem;">RSA-4096</h4>
             <p class="card-description" style="font-size: 0.875rem;">~140-bit classical security (between SP 800-57's 128- and 192-bit levels)</p>
-            <button id="oaep-gen-4096" class="btn btn-primary" aria-label="Generate 4096-bit RSA key pair for OAEP encryption">
+            <button id="oaep-gen-4096" class="btn btn-primary" aria-label="Generate 4096-bit Key Pair: an RSA key pair for OAEP encryption">
               Generate 4096-bit Key Pair
             </button>
             <div id="oaep-4096-timing" class="timing-display" style="margin-top: 1rem;" hidden>
@@ -653,10 +653,10 @@
           </div>
         </div>
         <div class="button-group">
-          <button id="oaep-encrypt-2048" class="btn btn-primary" disabled aria-label="Encrypt message with RSA-2048-OAEP">
+          <button id="oaep-encrypt-2048" class="btn btn-primary" disabled aria-label="Encrypt with 2048-bit key: the message, with RSA-2048-OAEP">
             Encrypt with 2048-bit key
           </button>
-          <button id="oaep-encrypt-4096" class="btn btn-secondary" disabled aria-label="Encrypt message with RSA-4096-OAEP">
+          <button id="oaep-encrypt-4096" class="btn btn-secondary" disabled aria-label="Encrypt with 4096-bit key: the message, with RSA-4096-OAEP">
             Encrypt with 4096-bit key
           </button>
         </div>
@@ -675,7 +675,7 @@
           Unlike textbook RSA, OAEP uses a random seed. Encrypt the same message twice and compare — 
           ciphertexts are always different, providing IND-CPA security.
         </p>
-        <button id="oaep-randomize" class="btn btn-primary" aria-label="Encrypt the same message twice to demonstrate OAEP randomization">
+        <button id="oaep-randomize" class="btn btn-primary" aria-label="Encrypt Same Message Twice: to demonstrate OAEP randomization">
           Encrypt Same Message Twice
         </button>
         <div id="oaep-randomize-result" style="margin-top: 1.5rem;" hidden aria-live="polite">
@@ -785,10 +785,10 @@
       <div class="card" id="oaep-decrypt-card" hidden>
         <h3 class="card-title">Decrypt</h3>
         <div class="button-group">
-          <button id="oaep-decrypt-2048" class="btn btn-primary" disabled aria-label="Decrypt ciphertext with RSA-2048-OAEP private key">
+          <button id="oaep-decrypt-2048" class="btn btn-primary" disabled aria-label="Decrypt with 2048-bit key: the ciphertext, with the RSA-2048-OAEP private key">
             Decrypt with 2048-bit key
           </button>
-          <button id="oaep-decrypt-4096" class="btn btn-secondary" disabled aria-label="Decrypt ciphertext with RSA-4096-OAEP private key">
+          <button id="oaep-decrypt-4096" class="btn btn-secondary" disabled aria-label="Decrypt with 4096-bit key: the ciphertext, with the RSA-4096-OAEP private key">
             Decrypt with 4096-bit key
           </button>
         </div>
@@ -825,7 +825,7 @@
         <h3 class="card-title">Generate Key and Sign</h3>
         <p class="card-description">Sign a message with RSA-PSS-SHA-256. Each signature uses a fresh random salt (sLen = 32 bytes).</p>
         <div class="button-group" style="margin-bottom: 1.5rem;">
-          <button id="pss-gen" class="btn btn-primary" aria-label="Generate 2048-bit RSA key pair for PSS signing">
+          <button id="pss-gen" class="btn btn-primary" aria-label="Generate 2048-bit Signing Key: an RSA key pair for PSS signing">
             Generate 2048-bit Signing Key
           </button>
         </div>
@@ -858,10 +858,10 @@
         <h3 class="card-title">Verify Signature</h3>
         <p class="card-description">Test signature verification with correct and tampered messages.</p>
         <div class="button-group">
-          <button id="pss-verify-ok" class="btn btn-primary" aria-label="Verify signature against the original message — should pass">
+          <button id="pss-verify-ok" class="btn btn-primary" aria-label="Verify Original Message: check the signature against it, which should pass">
             Verify Original Message
           </button>
-          <button id="pss-verify-tampered" class="btn btn-danger" aria-label="Attempt to verify signature against a tampered message — should fail">
+          <button id="pss-verify-tampered" class="btn btn-danger" aria-label="Verify Tampered Message: check the signature against it, which should fail">
             Verify Tampered Message
           </button>
         </div>
@@ -1018,7 +1018,7 @@
           Click a configuration and the demo runs the broadcast and the attack on <em>your</em> choice.
         </p>
         <div class="config-picker">
-          <button id="cfg-vulnerable" class="config-card" aria-label="Pick vulnerable configuration: e=3, no padding">
+          <button id="cfg-vulnerable" class="config-card">
             <div class="config-card-title">"Faster boot, simpler code"</div>
             <div class="config-card-config">e = 3 · padding = none (textbook)</div>
             <div class="step-desc">
@@ -1026,7 +1026,7 @@
             </div>
             <div class="config-card-outcome vulnerable">→ Run attack on this config</div>
           </button>
-          <button id="cfg-safe" class="config-card" aria-label="Pick safe configuration: e=65537, OAEP padding">
+          <button id="cfg-safe" class="config-card">
             <div class="config-card-title">"NIST-recommended defaults"</div>
             <div class="config-card-config">e = 65537 · padding = OAEP-SHA256</div>
             <div class="step-desc">
@@ -1050,7 +1050,7 @@
           These represent three servers all using textbook RSA with a small public exponent.
         </p>
         <div class="button-group">
-          <button id="hastad-setup" class="btn btn-primary" aria-label="Generate three RSA key pairs with e=3 for Håstad broadcast attack demonstration">
+          <button id="hastad-setup" class="btn btn-primary" aria-label="Generate 3 Recipient Keys (e=3): for the Håstad broadcast attack">
             Generate 3 Recipient Keys (e=3)
           </button>
         </div>
@@ -1108,7 +1108,7 @@
             Short because m must be less than the modulus. Message encoded as UTF-8 bytes → bigint.
           </div>
         </div>
-        <button id="hastad-broadcast" class="btn btn-primary" aria-label="Encrypt and broadcast message to all three recipients using e=3 textbook RSA">
+        <button id="hastad-broadcast" class="btn btn-primary" aria-label="Broadcast to 3 Recipients: encrypt the message to all three using e=3 textbook RSA">
           Broadcast to 3 Recipients
         </button>
         <div id="hastad-ciphertexts" style="margin-top: 1.5rem;" hidden aria-live="polite">
@@ -1136,7 +1136,7 @@
           Since m &lt; nᵢ for all i, we have m³ &lt; n₁·n₂·n₃. The Chinese Remainder Theorem gives us 
           exactly M = m³. Then the integer cube root of M reveals m directly.
         </p>
-        <button id="hastad-attack" class="btn btn-danger" aria-label="Execute Håstad broadcast attack: CRT reconstruction followed by cube root recovery">
+        <button id="hastad-attack" class="btn btn-danger" aria-label="Execute CRT + Cube Root Attack: the Håstad broadcast attack, CRT reconstruction then cube root recovery">
           Execute CRT + Cube Root Attack
         </button>
         <div id="hastad-attack-steps" style="margin-top: 1.5rem;" hidden aria-live="polite">
@@ -1311,7 +1311,7 @@
           </div>
         </div>
         <div class="button-group" style="margin-top: 1rem;">
-          <button id="bb-setup" class="btn btn-primary" aria-label="Generate 128-bit RSA key pair and set up Bleichenbacher attack">
+          <button id="bb-setup" class="btn btn-primary" aria-label="Generate Demo Key + Conformant Ciphertext: a 128-bit RSA key pair set up for the Bleichenbacher attack">
             Generate Demo Key + Conformant Ciphertext
           </button>
         </div>
@@ -1361,7 +1361,7 @@
                 Enter a hex value (same byte-length as modulus)
               </div>
             </div>
-            <button id="bb-oracle-query" class="btn btn-secondary" aria-label="Query the padding oracle with the entered ciphertext">
+            <button id="bb-oracle-query" class="btn btn-secondary" aria-label="Query Oracle: the padding oracle, with the entered ciphertext">
               Query Oracle
             </button>
           </div>
@@ -1404,7 +1404,7 @@
           </div>
           <div class="button-group" style="margin-top: 1rem;">
             <button id="bb-hom-run" class="btn btn-secondary" type="button"
-                    aria-label="Demonstrate that multiplying two ciphertexts equals encrypting the product of the plaintexts">
+                    aria-label="Show Enc(a) × Enc(b) = Enc(a × b): multiplying two ciphertexts equals encrypting the product of the plaintexts">
               Show Enc(a) × Enc(b) = Enc(a × b)
             </button>
           </div>
@@ -1417,10 +1417,10 @@
           not by magic, but as a direct consequence of the lever above.
         </p>
         <div class="button-group">
-          <button id="bb-run" class="btn btn-danger" aria-label="Run Bleichenbacher adaptive chosen-ciphertext attack">
+          <button id="bb-run" class="btn btn-danger" aria-label="Run Attack (Auto): the Bleichenbacher adaptive chosen-ciphertext attack">
             Run Attack (Auto)
           </button>
-          <button id="bb-run-oracle-mode" class="btn btn-secondary" aria-label="Run attack while you act as the padding oracle">
+          <button id="bb-run-oracle-mode" class="btn btn-secondary" aria-label="You Are the Oracle (step through): run the attack while you act as the padding oracle">
             You Are the Oracle (step through)
           </button>
           <button id="bb-abort" class="btn btn-ghost" disabled aria-label="Abort the running attack">
@@ -1447,7 +1447,7 @@
             <button id="bb-om-no" class="btn btn-ghost" aria-label="Answer not conformant for this query">
               ✗ NOT CONFORMANT
             </button>
-            <button id="bb-om-autocomplete" class="btn btn-danger" aria-label="Stop being the oracle and let the attack auto-complete">
+            <button id="bb-om-autocomplete" class="btn btn-danger" aria-label="Let the machine finish: stop being the oracle and let the attack auto-complete">
               Let the machine finish
             </button>
           </div>
@@ -1737,7 +1737,7 @@
           This is not √eNFS. It is a tiny sanity check of one exact malleability ingredient the paper exploits at scale: if a raw RSA oracle signs m₁ and m₂, then it also implicitly signs m₁·m₂. Here the browser does only the textbook arithmetic the attack relies on; it is not a replica of the full 1,380 core-year computation.
         </p>
         <div class="button-group" style="margin-top: 1rem;">
-          <button id="nfs-toy" class="btn btn-secondary" aria-label="Demonstrate the multiplicative raw-oracle property that √eNFS exploits">Show raw-oracle malleability</button>
+          <button id="nfs-toy" class="btn btn-secondary" aria-label="Show raw-oracle malleability: the multiplicative raw-oracle property that √eNFS exploits">Show raw-oracle malleability</button>
         </div>
         <div id="nfs-toy-result" class="oracle-query-log" style="margin-top: 1rem;" hidden>
           <div id="nfs-toy-sig1">—</div>
@@ -1760,11 +1760,11 @@
       <div class="card">
         <h3 class="card-title">Cross-links</h3>
         <div class="cross-link-grid">
-          <a href="https://systemslibrarian.github.io/crypto-lab-factor-forge/" class="cross-link-card" aria-label="crypto-lab-factor-forge: breaking RSA ≠ factoring">
+          <a href="https://systemslibrarian.github.io/crypto-lab-factor-forge/" class="cross-link-card">
             <span class="cross-link-name">crypto-lab-factor-forge</span>
             <span class="cross-link-desc">Breaking RSA ≠ factoring — why a successful attack on a public key is not the same as splitting N.</span>
           </a>
-          <a href="https://systemslibrarian.github.io/crypto-lab-privacy-pass/" class="cross-link-card" aria-label="crypto-lab-privacy-pass: RSABSSA and Privacy Pass demo">
+          <a href="https://systemslibrarian.github.io/crypto-lab-privacy-pass/" class="cross-link-card">
             <span class="cross-link-name">crypto-lab-privacy-pass</span>
             <span class="cross-link-desc">Privacy Pass, RSA blind signatures, and the one-more / delayed-target security assumptions that this paper revisits.</span>
           </a>
@@ -1916,7 +1916,7 @@
           your numbers, your browser, right now.
         </p>
         <div class="button-group">
-          <button id="hybrid-run" class="btn btn-primary" aria-label="Run hybrid encryption timing benchmark on 1 megabyte of data">
+          <button id="hybrid-run" class="btn btn-primary" aria-label="Encrypt 1 MB — RSA-only vs AES vs Hybrid: a timing benchmark on one megabyte">
             Encrypt 1 MB — RSA-only vs AES vs Hybrid
           </button>
         </div>
@@ -1996,32 +1996,27 @@
     <h2 class="cross-links-title" id="cross-links-title">Related Crypto Lab Demos</h2>
     <div class="cross-link-grid">
       <a href="https://systemslibrarian.github.io/crypto-lab-kyber-vault/"
-         class="cross-link-card"
-         aria-label="crypto-lab-kyber-vault: ML-KEM post-quantum key encapsulation demo">
+         class="cross-link-card">
         <span class="cross-link-name">crypto-lab-kyber-vault</span>
         <span class="cross-link-desc">ML-KEM-768 (FIPS 203) — the RSA replacement. Post-quantum key encapsulation.</span>
       </a>
       <a href="https://systemslibrarian.github.io/crypto-lab-iron-letter/"
-         class="cross-link-card"
-         aria-label="crypto-lab-iron-letter: AES-GCM and ChaCha20-Poly1305 symmetric encryption demo">
+         class="cross-link-card">
         <span class="cross-link-name">crypto-lab-iron-letter</span>
         <span class="cross-link-desc">AES-GCM and ChaCha20-Poly1305 symmetric encryption and authenticated encryption.</span>
       </a>
       <a href="https://systemslibrarian.github.io/crypto-lab-dilithium-seal/"
-         class="cross-link-card"
-         aria-label="crypto-lab-dilithium-seal: ML-DSA post-quantum digital signatures demo">
+         class="cross-link-card">
         <span class="cross-link-name">crypto-lab-dilithium-seal</span>
         <span class="cross-link-desc">ML-DSA-65 (FIPS 204) — post-quantum digital signatures.</span>
       </a>
       <a href="https://systemslibrarian.github.io/crypto-compare/#asymmetric"
-         class="cross-link-card"
-         aria-label="crypto-compare asymmetric category: compare all asymmetric cryptography algorithms">
+         class="cross-link-card">
         <span class="cross-link-name">crypto-compare</span>
         <span class="cross-link-desc">Side-by-side comparison of all asymmetric algorithms: RSA, ECC, PQC.</span>
       </a>
       <a href="https://systemslibrarian.github.io/"
-         class="cross-link-card"
-         aria-label="Crypto Lab landing page: full collection of cryptography demonstrations">
+         class="cross-link-card">
         <span class="cross-link-name">Crypto Lab</span>
         <span class="cross-link-desc">Full collection of interactive cryptography demonstrations.</span>
       </a>
