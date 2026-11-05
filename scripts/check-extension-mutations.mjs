@@ -82,7 +82,7 @@ const digest=data=>createHash('sha256').update(data).digest('hex');
 function emitted(){const html=readFileSync('dist/index.html','utf8');const names=[...new Set([...html.matchAll(/\/assets\/([^"'\s]+\.(?:js|css))/g)].map(m=>m[1]))].sort();if(!names.some(n=>n.endsWith('.js')))throw new Error('No emitted JavaScript entry');return names;}
 function assets(){return Object.fromEntries(emitted().filter(f=>f.endsWith('.js')).map(f=>[f,digest(readFileSync('dist/assets/'+f))]));}
 const hash=()=>digest(JSON.stringify({'index.html':digest(readFileSync('dist/index.html')),...Object.fromEntries(emitted().map(f=>['assets/'+f,digest(readFileSync('dist/assets/'+f))]))}));
-function owning(e){return run('npx',['playwright','test',...(process.env.PLAYWRIGHT_CONFIG?['--config',process.env.PLAYWRIGHT_CONFIG]:[]),'--project=chromium','e2e/claims.spec.ts','--grep',e.test,'--retries=0'],{MUTATION_ASSETS:JSON.stringify(assets())});}
+function owning(e){return run('npx',['playwright','test',...(process.env.PLAYWRIGHT_CONFIG?['--config',process.env.PLAYWRIGHT_CONFIG]:[]),'--project=claims','e2e/claims.spec.ts','--grep',e.test,'--retries=0'],{MUTATION_ASSETS:JSON.stringify(assets())});}
 const records=[];
 for(const e of cases){
  const source=readFileSync(e.file,'utf8');if(source.split(e.anchor).length!==2)throw new Error(e.name+': ambiguous anchor');

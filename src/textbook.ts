@@ -251,6 +251,19 @@ export function decodeMessage(m: bigint): string {
 
 let tbKey: RsaKeyPair | null = null;
 let tbCiphertext: bigint | null = null;
+let tbKeyGeneration = 0;
+
+function retireTextbookEvidence(): void {
+  tbCiphertext = null;
+  hide('tb-encrypt-result');
+  hide('tb-decrypt-section');
+  hide('tb-determinism-result');
+  setText('tb-ciphertext', '');
+  setText('tb-decrypted', '');
+  setText('tb-ct1', '—');
+  setText('tb-ct2', '—');
+  setText('tb-ct-match', '—');
+}
 
 export function initTextbookPanel(): void {
   const btnSmall = document.getElementById('tb-gen-small') as HTMLButtonElement;
@@ -271,6 +284,14 @@ export function initTextbookPanel(): void {
   btnEncrypt.addEventListener('click', encryptMessage);
   btnDecrypt.addEventListener('click', decryptMessage);
   btnDeterminism.addEventListener('click', demonstrateDeterminism);
+
+  const plaintext = document.getElementById('tb-plaintext') as HTMLInputElement;
+  let previousPlaintext = plaintext.value;
+  plaintext.addEventListener('input', () => {
+    if (plaintext.value === previousPlaintext) return;
+    previousPlaintext = plaintext.value;
+    retireTextbookEvidence();
+  });
   if (btnFactor) {
     btnFactor.addEventListener('click', runFactorWall);
     // The factoring wall stands on its own (self-generating tiny n); show it up
@@ -351,13 +372,23 @@ function runFactorWall(): void {
 
 function generateKey(primeBits: number, btn: HTMLButtonElement): void {
   const label = btn.getAttribute('aria-label') ?? 'Generate RSA key';
+  const generation = ++tbKeyGeneration;
+  tbKey = null;
+  retireTextbookEvidence();
+  hide('tb-params');
+  hide('tb-crypto-card');
   setLoading(btn, true);
   announce('Generating RSA key pair…');
 
   // Yield to browser to show spinner before blocking work
   setTimeout(() => {
     try {
+      // A newer key request supersedes this queued callback. Checking before
+      // the synchronous teaching keygen also avoids wasting a long main-thread
+      // calculation on a result that can no longer be current.
+      if (generation !== tbKeyGeneration) return;
       const kp = generateRsaKeyPair(primeBits * 2);
+      if (generation !== tbKeyGeneration) return;
       tbKey = kp;
 
       setText('tb-p',   kp.p.toString(10));

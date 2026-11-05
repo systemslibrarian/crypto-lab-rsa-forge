@@ -18,8 +18,8 @@ import {
  * exist); the factoring wall; textbook RSA at 64 and 512 bits, with the
  * empty-message and over-long-message refusals in between; the determinism
  * contrast grid; the OAEP padding disclosure and both renderings of its field
- * tooltip; OAEP at 2048 AND 4096, including the decryption FAILURE that only a
- * regenerated key can produce; PSS signed, verified and rejected; both branches
+ * tooltip; OAEP at 2048 AND 4096, including evidence retirement after a fresh
+ * key; PSS signed, verified and rejected; both branches
  * of the Håstad config challenge and the full manual broadcast attack; the
  * Bleichenbacher padding oracle answering both ways, the homomorphic lever,
  * human-oracle mode with one correct and one WRONG answer, an abort, and the
