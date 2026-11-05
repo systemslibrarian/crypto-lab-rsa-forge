@@ -24,6 +24,23 @@ let lastCiphertextKey: OaepKeyPair | null = null;
 let lastOaepFields: OaepFields | null = null;
 let oaepRevision = 0;
 
+/**
+ * Invert exactly one bit of one byte, chosen uniformly.
+ *
+ * The button says "Flip one input bit" and the panel claims that doing so makes
+ * roughly half the output bits flip — the avalanche criterion, which is about a
+ * ONE-BIT input change. Before this was a function the code read
+ * `bytes[i] ^= 0x01`, which is one bit, but nothing checked that: flipping a
+ * whole byte with `^= 0xff` left every test green while the label went on
+ * promising one bit. `oaep-avalanche.test.ts` pins it by popcount.
+ */
+export function flipOneBit(bytes: Uint8Array): { index: number; bit: number } {
+  const index = Math.floor(Math.random() * bytes.length);
+  const bit = Math.floor(Math.random() * 8);
+  bytes[index] ^= 1 << bit;
+  return { index, bit };
+}
+
 function syncEncryptButtons(): void {
   (document.getElementById('oaep-encrypt-2048') as HTMLButtonElement).disabled = !oaepKeys[2048];
   (document.getElementById('oaep-encrypt-4096') as HTMLButtonElement).disabled = !oaepKeys[4096];
@@ -120,8 +137,7 @@ function initOaepHighLevel(): void {
     // Flip exactly one input bit (alternate seed vs message so repeat presses
     // keep telling the same story) and recompute the whole scrambled block.
     const flipSeed = Math.random() < 0.5;
-    if (flipSeed) hlSeed[Math.floor(Math.random() * hlSeed.length)] ^= 0x01;
-    else          hlMsg[Math.floor(Math.random() * hlMsg.length)]  ^= 0x01;
+    flipOneBit(flipSeed ? hlSeed : hlMsg);
 
     const out = await hlScramble(hlSeed, hlMsg);
     let diff = 0;
