@@ -56,7 +56,7 @@ export function initPssPanel(): void {
 
 /* ── Diagram hover with real bytes ─────────────────────────── */
 const PSS_FIELD_LABELS: Record<string, string> = {
-  zeros8:    '8 leading zero bytes (RFC 8017 §9.1.1 step 4)',
+  zeros8:    '8 leading zero bytes (RFC 8017 §9.1.1 step 5)',
   mHash:     'mHash = SHA-256(your message)',
   salt:      'salt — sLen random bytes (fresh each signature)',
   H:         'H = SHA-256(0×8 ‖ mHash ‖ salt)',

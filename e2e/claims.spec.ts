@@ -1214,3 +1214,87 @@ test('Tabs 7–8: edits and fresh keys retire results, while identical inputs pr
   await page.locator('#fault-generate').click();await expect(page.locator('#fault-result')).toBeEmpty();await expect(page.locator('#fault-sign')).toBeEnabled();await expect(page.locator('#fault-inject')).toBeDisabled();
   await openPanel(page,8);await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await page.locator('#parity-step').click();await page.locator('#parity-size').dispatchEvent('change');await page.locator('#parity-message').dispatchEvent('input');await expect(page.locator('#parity-count')).toHaveText('1');await page.locator('#parity-message').fill('edited');await expect(page.locator('#parity-count')).toHaveText('0');await expect(page.locator('#parity-result')).toBeEmpty();await expect(page.locator('#parity-step')).toBeDisabled();
 });
+
+/* ══════════════════════════════════════════════════════════════
+   Sourced page copy — standards attributions and printed sizes
+
+   Sources:
+   - RFC 8017 §7.1: the OAEP message encoding method is EME-OAEP
+     (EMSA- is the signature-with-appendix prefix).
+   - RFC 8017 §8: "RSASSA-PSS is REQUIRED in new applications.
+     RSASSA-PKCS1-v1_5 is included only for compatibility with existing
+     applications." FIPS 186-5 §5.4: "Both of these signature schemes are
+     approved for use."
+   - RFC 8017 §9.1.1: the eight initial zero octets are step 5.
+   - Ronen et al., ePrint 2018/1173, "The 9 Lives of Bleichenbacher's CAT:
+     New Cache ATtacks on TLS Implementations" (CVE-2018-12404).
+   - SEC 1 v2.0 §2.3.3: a compressed point is ceil(log2 q / 8) + 1 octets,
+     so 33 for P-256. NIST SP 800-56A Rev. 3 §5.7.1.2: the ECC CDH shared
+     secret is the x-coordinate, 32 bytes for P-256.
+   ══════════════════════════════════════════════════════════════ */
+
+test('standards attributions, printed key sizes and the bar scaling match their sources', async ({
+  page,
+}) => {
+  await load(page);
+
+  await openPanel(page, 2);
+  const oaepPanel = await textOf(page, '#panel-2');
+  expect(oaepPanel).toContain('EME-OAEP encoding (Step 2 of §7.1.1)');
+  expect(oaepPanel).not.toContain('EMSA-OAEP');
+
+  await openPanel(page, 3);
+  const sigPanel = await textOf(page, '#panel-3');
+  expect(sigPanel).toContain('FIPS 186-5 §5.4 approves both schemes');
+  expect(sigPanel).toContain('REQUIRED in new applications');
+  expect(sigPanel).toContain('only for compatibility with existing applications');
+  expect(sigPanel).not.toContain('Legacy — not recommended for new systems');
+  expect(sigPanel).not.toContain('NIST recommendation');
+
+  // The eight zero octets are step 5 of RFC 8017 §9.1.1, not step 4.
+  await page.locator('[data-pss-field="zeros8"]').first().focus();
+  expect(await textOf(page, '#pss-tooltip-label')).toContain('§9.1.1 step 5');
+
+  await openPanel(page, 5);
+  const oraclePanel = await textOf(page, '#panel-5');
+  expect(oraclePanel).toContain('CAT — Cache ATtacks');
+  expect(oraclePanel).not.toContain('Cache-like Timing');
+
+  await openPanel(page, 6);
+  const comparePanel = await textOf(page, '#panel-6');
+  expect(comparePanel).toContain('33 B compressed');
+  expect(comparePanel).toContain('32 B shared secret');
+  expect(comparePanel).not.toContain('32 B compressed');
+  expect(comparePanel).not.toContain('64 B shared secret');
+  // The printed sizes contradict any claim that post-quantum keys are the
+  // smaller ones, or that RSA-4096's bar is as long as ML-KEM-768's.
+  expect(comparePanel).not.toContain('far smaller than RSA');
+  expect(comparePanel).not.toContain('same bar width as ML-KEM-768');
+
+  // Every bar's declared width is recomputed from the page's OWN printed byte
+  // value against the page's OWN 100% base, so a bar cannot be drawn longer
+  // than the number beside it says.
+  const rows = page.locator('.bar-chart .bar-row');
+  const rowCount = await rows.count();
+  expect(rowCount).toBeGreaterThan(1);
+
+  const bars: { label: string; bytes: number; pct: number }[] = [];
+  for (let i = 0; i < rowCount; i++) {
+    const row = rows.nth(i);
+    const label = ((await row.locator('.bar-label').textContent()) ?? '').trim();
+    const bytes = numOf((await row.locator('.bar-value-label').textContent()) ?? '');
+    const style = (await row.locator('.bar-fill').getAttribute('style')) ?? '';
+    const m = style.match(/width:\s*([\d.]+)%/);
+    if (!m) throw new Error(`no declared width for bar ${label}`);
+    bars.push({ label, bytes, pct: Number(m[1]) });
+  }
+
+  // Exactly one bar is the 100% base, and the caption must name it.
+  expect(bars.filter((b) => b.pct === 100).map((b) => b.label)).toHaveLength(1);
+  const base = bars.find((b) => b.pct === 100);
+  if (!base) throw new Error('no bar is the 100% base');
+  expect(comparePanel).toContain(`scaled to ${base.label} (${base.bytes} B) = 100%`);
+  for (const bar of bars) {
+    expect(bar.pct, `bar ${bar.label}`).toBeCloseTo((bar.bytes / base.bytes) * 100, 1);
+  }
+});
