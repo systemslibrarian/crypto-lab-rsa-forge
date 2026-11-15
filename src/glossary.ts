@@ -23,7 +23,7 @@ const GLOSSARY: Record<string, GlossEntry> = {
   },
   modexp: {
     term: 'Modular exponentiation',
-    def: 'Raising a number to a power and taking the remainder mod n, e.g. m^e mod n. Cheap to compute forwards, but recovering m from the result (the RSA problem) is believed as hard as factoring n. It is the core operation of both encrypting and decrypting.',
+    def: 'Raising a number to a power and taking the remainder mod n, e.g. m^e mod n. Cheap to compute forwards, but recovering m from the result is the RSA problem — believed hard; factoring n solves it, but it is not known to be equivalent to factoring. It is the core operation of both encrypting and decrypting.',
   },
   mgf1: {
     term: 'MGF1 — Mask Generation Function 1',
