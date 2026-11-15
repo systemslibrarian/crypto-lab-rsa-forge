@@ -580,7 +580,8 @@
         <h3 class="card-title">Generate RSA Keys via WebCrypto</h3>
         <p class="card-description">
           Real 2048-bit and 4096-bit RSA key pairs generated using the browser's WebCrypto API.
-          NIST SP 800-57 recommends 2048-bit minimum; 3072-bit or 4096-bit for long-term security.
+          NIST SP 800-57 Part 1 Rev. 5 sets a 2048-bit minimum (112-bit strength) and rates 3072-bit at 128 bits;
+          NIST IR 8547 (final, October 2026) deprecates RSA at every key size after 2030 and disallows it after 2035.
           The figures below are <em>classical</em> security strengths from SP 800-57 Part 1 Rev. 5. That is a
           different scale from the NIST PQC security categories used in the comparison table further down —
           no RSA key size reaches PQC category 1, because Shor's algorithm breaks RSA outright.
