@@ -1271,6 +1271,20 @@ test('standards attributions, printed key sizes and the bar scaling match their 
   expect(comparePanel).not.toContain('far smaller than RSA');
   expect(comparePanel).not.toContain('same bar width as ML-KEM-768');
 
+  // The post-quantum column states the category the standards actually claim,
+  // not a bit figure. FIPS 203 §8 claims ML-KEM-768 in security category 3 and
+  // FIPS 204 §4 claims ML-DSA-65 in category 3; both say in those sections that
+  // security strength "is not described by a single number," and neither states
+  // a bit count. The old "~168-bit (NIST L3)" cell had no source, and no single
+  // bit figure covers both schemes, so no bit figure may reappear in this table.
+  expect(comparePanel).toContain('Cat. 3 (≈AES-192)');
+  expect(comparePanel).toContain('FIPS 203 §8 claims ML-KEM-768 in security category 3');
+  expect(comparePanel).toContain('FIPS 204 §4 claims ML-DSA-65 in category 3');
+  expect(comparePanel).toContain('key search on a block cipher with a 192-bit key — AES-192');
+  expect(comparePanel).toContain('per NIST IR 8547 Table 1');
+  expect(comparePanel).not.toContain('168');
+  expect(comparePanel).not.toContain('NIST L3');
+
   // Every bar's declared width is recomputed from the page's OWN printed byte
   // value against the page's OWN 100% base, so a bar cannot be drawn longer
   // than the number beside it says.

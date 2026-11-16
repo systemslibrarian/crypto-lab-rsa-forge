@@ -1847,7 +1847,7 @@
                 <td>1184 B public key</td>
                 <td>1088 B ciphertext</td>
                 <td>&gt; 180-bit</td>
-                <td aria-label="Post-quantum secure">✅ ~168-bit (NIST L3)</td>
+                <td aria-label="Post-quantum secure">✅ Cat. 3 (≈AES-192)</td>
                 <td><span class="status-chip status-chip-safe" style="font-size: 0.75rem;">RECOMMENDED</span></td>
               </tr>
               <tr>
@@ -1855,12 +1855,19 @@
                 <td>1952 B public key</td>
                 <td>3309 B signature</td>
                 <td>&gt; 180-bit</td>
-                <td aria-label="Post-quantum secure">✅ ~168-bit (NIST L3)</td>
+                <td aria-label="Post-quantum secure">✅ Cat. 3 (≈AES-192)</td>
                 <td><span class="status-chip status-chip-safe" style="font-size: 0.75rem;">RECOMMENDED</span></td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p style="font-size: 0.8125rem; color: var(--color-text-faint); margin-top: 0.5rem;">
+          Post-quantum security here is a NIST <em>category</em>, not a bit count:
+          FIPS 203 §8 claims ML-KEM-768 in security category 3, and
+          FIPS 204 §4 claims ML-DSA-65 in category 3. Neither standard states a bit figure; both say
+          security strength “is not described by a single number.” Category 3’s reference attack is
+          key search on a block cipher with a 192-bit key — AES-192 — per NIST IR 8547 Table 1.
+        </p>
         <p style="font-size: 0.8125rem; color: var(--color-text-faint); margin-top: 0.5rem;">
           Sources: NIST SP 800-57 Part 1 Rev. 5; FIPS 203 (ML-KEM); FIPS 204 (ML-DSA); NIST PQC Round 3 Report.
         </p>
