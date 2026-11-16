@@ -1,44 +1,10 @@
 /**
- * ui.ts — Panel controller, theme toggle, shared UI utilities.
+ * ui.ts — Panel controller and shared UI utilities.
  * WCAG 2.1 AA: keyboard navigation, ARIA state, focus management.
  */
 
 export function initUI(): void {
-  initTheme();
   initTabs();
-}
-
-/* ── Theme ─────────────────────────────────────────────────── */
-function initTheme(): void {
-  const toggle = document.getElementById('theme-toggle') as HTMLButtonElement;
-  const icon   = document.getElementById('theme-icon')   as HTMLElement;
-
-  // Sync button state with whatever data-theme the anti-flash script set
-  const current = document.documentElement.getAttribute('data-theme') ?? 'dark';
-  applyTheme(current as 'dark' | 'light', toggle, icon);
-
-  toggle.addEventListener('click', () => {
-    const now  = document.documentElement.getAttribute('data-theme');
-    const next = now === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    applyTheme(next, toggle, icon);
-    announce(`Switched to ${next} mode`);
-  });
-}
-
-function applyTheme(
-  theme: 'dark' | 'light',
-  toggle: HTMLButtonElement,
-  icon: HTMLElement,
-): void {
-  if (theme === 'dark') {
-    icon.textContent = '\u{1F319}';
-    toggle.setAttribute('aria-label', 'Switch to light mode');
-  } else {
-    icon.textContent = '\u{2600}\u{FE0F}';
-    toggle.setAttribute('aria-label', 'Switch to dark mode');
-  }
 }
 
 /* ── Tabs / Panels ─────────────────────────────────────────── */
