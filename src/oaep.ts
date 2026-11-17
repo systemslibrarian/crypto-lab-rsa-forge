@@ -5,7 +5,11 @@
  * Encryption is RSA-OAEP with SHA-256 (RFC 8017 §7.1).
  * Demonstrates randomized encryption and OAEP padding structure.
  *
- * NIST SP 800-57 Part 1 Rev. 5 — 2048-bit minimum, 3072+ for long-term.
+ * Key sizes: SP 800-57 Part 1 Rev. 5 Table 2 rates 2048-bit RSA at 112 bits of
+ * security strength and 3072-bit at 128. That is a strength rating, not a
+ * schedule: NIST IR 8547 (final, October 2026) deprecates RSA at ANY key size
+ * after 2030 and disallows it after 2035, so a larger modulus buys strength
+ * but no extra time. See README.md “What Can Go Wrong”.
  */
 
 import { announce, show, hide, setText, setLoading, toBase64, toHex, truncate } from './ui.js';
