@@ -280,13 +280,15 @@ export function xboxByte16Factorization(): XboxByte16 {
 }
 
 /**
- * Muir §3.1 success probabilities for Seifert's original (prime-N̂) search:
- * 1 − (1 − p)^(2^b − 1) with p ≈ 0.00282 (RSA-1024, e = 65537).
+ * Muir §3.2 success probabilities for Seifert's original (prime-N̂) search:
+ * 1 − (1 − p)^(2^b − 1) with p ≈ 0.00282 (RSA-1024, e = 65537). The general
+ * formula is set up in §3.1 ("Analysis"); the RSA-1024 base probability 0.00282
+ * and these b = 4/6/8/10 values live in §3.2 ("The off-line search in practice").
  *
- * These are the §3.1 figures, NOT Figure 3's "Seifert" column — the b = 6 cell
+ * These are the §3.2 figures, NOT Figure 3's "Seifert" column — the b = 6 cell
  * of Figure 3 reads 0.084 and is wrong (it uses 2^5 − 1 trials where the text
  * uses 2^6 − 1). The b = 4 and b = 8 rows agree between the two. This function
- * computes the §3.1 formula, so b = 6 gives ≈ 0.163, matching the paper's text.
+ * computes the §3.2 formula, so b = 6 gives ≈ 0.163, matching the paper's text.
  */
 export function seifertSuccessProbability(b: number, perTrial = 0.00282): number {
   return 1 - Math.pow(1 - perTrial, 2 ** b - 1);

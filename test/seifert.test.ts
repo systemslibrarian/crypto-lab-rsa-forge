@@ -56,9 +56,15 @@ describe('the Xbox modulus (Muir §4.3)', () => {
 
 describe('forgeability analysis', () => {
   it('a prime N̂ is forgeable, φ = N̂ − 1, and d̂ inverts e', () => {
-    const N = generateRsaKeyPair(256, 65537n).n;
-    // Find a prime fault by trying byte-0 values — the prime density over 256
-    // values makes this reliable.
+    // A FIXED 256-bit modulus whose byte-0 search finds a prime (at v = 47).
+    // A fresh random key was used here before, with a byte-0-only search and a
+    // comment that the "prime density makes this reliable" -- it does not: over
+    // ~128 odd candidates near a 256-bit value the chance of finding no prime is
+    // ~30-50%, so the search returned null and the test failed about a third of
+    // runs. Fixing the modulus makes the search deterministic; the demo still
+    // generates keys at runtime.
+    const N = 0x9b43a24488fcdbb38722825c1d6dc289d8c38f8a20f715319f907fa284b33aabn;
+    // Find the prime fault by trying byte-0 values; for this N it is at v = 47.
     let primeHat: bigint | null = null;
     const base = N - (N & 0xffn);
     for (let v = 0; v < 256 && !primeHat; v++) {
@@ -84,10 +90,20 @@ describe('forgeability analysis', () => {
   });
 });
 
+// A precomputed FORGEABLE 512-bit modulus (zeroing/searching byte 0 gives a
+// prime N̂). The end-to-end attack is run against this fixed key, deterministically
+// and in bounded time, instead of generating a fresh random key per call:
+// generateRsaKeyPair occasionally spent >2s on an unlucky prime search, and three
+// such keygens in one test timed out at the 5s default. The attack does not depend
+// on the message, only on the key; the live demo still generates keys at runtime.
+const FORGEABLE_N_512 =
+  0x67f58c104a0e37e7b2c01d1c8ae6c321085303b4e0491243bc3e078b05a88c875c77b70bf036fe19f98bd70249b3e001bace9764bccea834d9afebfdce20a4f3n;
+const fixedKeygen = (): { n: bigint } => ({ n: FORGEABLE_N_512 });
+
 describe('the toy attack, end to end', () => {
   it('forges a signature the faulted device accepts and the honest device rejects', async () => {
     for (const message of ['run my unsigned code', 'any message at all', 'ship it']) {
-      const run = await runToyAttack(message, 512);
+      const run = await runToyAttack(message, 512, 65537n, fixedKeygen);
       expect('error' in run).toBe(false);
       if ('error' in run) continue;
       expect(run.search.analysis.forgeable).toBe(true);
@@ -107,7 +123,7 @@ describe('the toy attack, end to end', () => {
   });
 
   it('the attacker never uses the real factors: a wrong modulus does not verify', async () => {
-    const run = await runToyAttack('no secret key needed', 512);
+    const run = await runToyAttack('no secret key needed', 512, 65537n, fixedKeygen);
     expect('error' in run).toBe(false);
     if ('error' in run) return;
     // s was built from d̂ = e⁻¹ mod φ(N̂). Verifying it under a DIFFERENT prime
@@ -117,8 +133,8 @@ describe('the toy attack, end to end', () => {
   });
 });
 
-describe('Muir §3.1 success probabilities (not Figure 3’s b=6)', () => {
-  it('reproduces the §3.1 formula values for RSA-1024', () => {
+describe('Muir §3.2 success probabilities (not Figure 3’s b=6)', () => {
+  it('reproduces the §3.2 formula values for RSA-1024', () => {
     // 1 − (1 − 0.00282)^(2^b − 1).
     expect(seifertSuccessProbability(4)).toBeCloseTo(0.0415, 3);
     expect(seifertSuccessProbability(6)).toBeCloseTo(0.163, 3);

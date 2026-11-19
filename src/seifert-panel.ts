@@ -139,9 +139,10 @@ function initXbox(): void {
   });
 }
 
-/** The §3.1 success-probability note, rendered once at mount. */
+/** The §3.2 success-probability note, rendered once at mount. */
 export function seifertProbabilityRows(): string {
-  // 1 − (1 − 0.00282)^(2^b − 1), the §3.1 formula (RSA-1024, e = 65537).
+  // 1 − (1 − 0.00282)^(2^b − 1), Muir §3.2 (RSA-1024, e = 65537); the formula
+  // is introduced in §3.1 and the 0.00282 base probability is computed in §3.2.
   return [4, 6, 8]
     .map((b) => `<tr><td>${b}</td><td>${(seifertSuccessProbability(b) * 100).toFixed(1)}%</td></tr>`)
     .join('');

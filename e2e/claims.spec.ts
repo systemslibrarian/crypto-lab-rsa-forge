@@ -1204,10 +1204,13 @@ test('Seifert Xbox: byte 104 is prime-making and byte 16 factors as the paper st
   await expect(page.locator('#seifert-xbox-b16')).toHaveAttribute('data-match', 'true');
 });
 
-test('Seifert probability note gives §3.1’s 16.3% for b=6, not Figure 3’s 8.4%', async ({ page }) => {
+test('Seifert probability note gives §3.2’s 16.3% for b=6, not Figure 3’s 8.4%', async ({ page }) => {
   await load(page);
   await page.locator('#tab-9').click();
-  await page.locator('#panel-9 details').nth(2).locator('summary').click();
+  const seifert = page.locator('#panel-9 details').nth(2);
+  // The RSA-1024 success probabilities (0.00282, 16.3%) are Muir §3.2, not §3.1.
+  await expect(seifert.locator('summary')).toContainText('§3.2 success probabilities');
+  await seifert.locator('summary').click();
   const rows = page.locator('#seifert-prob-rows tr');
   await expect(rows).toHaveCount(3);
   const cells = await rows.nth(1).locator('td').allInnerTexts();
@@ -1215,6 +1218,9 @@ test('Seifert probability note gives §3.1’s 16.3% for b=6, not Figure 3’s 8
   expect(cells[1].trim()).toBe('16.3%');
   const panel = await page.locator('#panel-9').innerText();
   expect(panel).toContain('not the 8.4% in the paper');
+  expect(panel).toContain('Success probability (§3.2)');
+  // The old mis-citation must not come back: no "§3.1 success probabilities".
+  expect(panel).not.toContain('§3.1 success probabilities');
 });
 
 
