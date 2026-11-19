@@ -1,5 +1,6 @@
 import { initPitfallsPanel } from './pitfalls-panel.js';
 import { initParityPanel } from './parity-panel.js';
+import { initSeifertPanel } from './seifert-panel.js';
 import { mountExtensionPanels } from './extension-panels.js';
 /**
  * main.ts — Entry point.
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initGlossary();
   initPitfallsPanel();
   initParityPanel();
+  initSeifertPanel();
   initTextbookPanel();
   initOaepPanel();
   initPssPanel();

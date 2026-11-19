@@ -47,3 +47,39 @@ describe('RSA key-size guidance', () => {
     expect(sources['index.html']).toContain('RSA at every key size');
   });
 });
+
+/* Seifert's verifier-fault attack (panel 9).
+ *
+ * The lab's other fault panels fault the SIGNER. This one faults the
+ * verifier's modulus, the attack in J. A. Muir, "Seifert's RSA Fault Attack:
+ * Simplified Analysis and Generalizations" (2005). The source must cite Muir
+ * and the real Xbox modulus (§4.3), and must not present Figure 3's wrong
+ * b = 6 success figure (0.084) as the one to use — §3.1 gives 0.163.
+ */
+describe('Seifert fault attack sourcing', () => {
+  const seifert = read('../src/seifert.ts');
+  const panel = read('../src/seifert-panel.ts');
+  const ext = read('../src/extension-panels.ts');
+
+  it('cites Muir and names the Xbox modulus as a figure from the paper', () => {
+    expect(seifert).toContain('Muir');
+    expect(seifert).toMatch(/§4\.3|§4\.3/);
+    // The modulus is the paper's, not an invented one.
+    expect(seifert).toContain('XBOX_MODULUS_HEX');
+    expect(ext).toContain('Muir');
+    expect(ext).toContain('Operation X');
+  });
+
+  it('uses §3.1’s success formula, not Figure 3’s wrong b=6 cell', () => {
+    // The page explains the discrepancy and tells the reader which to use.
+    expect(ext).toContain('not the 8.4% in the paper');
+    expect(seifert).toMatch(/Figure 3/);
+    // The formula constant is the §3.1 one.
+    expect(seifert).toContain('0.00282');
+  });
+
+  it('keeps the forgery independent of the real key: no factoring of N', () => {
+    // The toy run must say it does not use the real primes.
+    expect(ext).toContain('real primes of N are never used');
+  });
+});

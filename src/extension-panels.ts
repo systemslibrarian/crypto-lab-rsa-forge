@@ -1,7 +1,8 @@
+import { seifertProbabilityRows, XBOX_DISPLAY } from './seifert-panel.js';
 /** Appended panels only; the original tab IDs and navigation stay intact. */
 export function mountExtensionPanels(): void {
   const tabs = document.querySelector('.tab-list')!;
-  for (const [id,title] of [[7,'Implementation Pitfalls'],[8,'Parity Oracle']]) tabs.insertAdjacentHTML('beforeend',`<li role="none"><button class="tab-btn" role="tab" id="tab-${id}" aria-selected="false" aria-controls="panel-${id}" data-panel="${id}" tabindex="-1"><span class="tab-status-dot tab-status-danger" aria-hidden="true"></span><span>${title}</span></button></li>`);
+  for (const [id,title] of [[7,'Implementation Pitfalls'],[8,'Parity Oracle'],[9,'Fault the Verifier']]) tabs.insertAdjacentHTML('beforeend',`<li role="none"><button class="tab-btn" role="tab" id="tab-${id}" aria-selected="false" aria-controls="panel-${id}" data-panel="${id}" tabindex="-1"><span class="tab-status-dot tab-status-danger" aria-hidden="true"></span><span>${title}</span></button></li>`);
   document.getElementById('main-content')!.insertAdjacentHTML('beforeend',`
 <section id="panel-7" class="panel rsa-extension" role="tabpanel" aria-labelledby="tab-7" tabindex="0" hidden>
  <div class="panel-header"><h2 class="panel-title">Implementation Pitfalls</h2><p class="panel-description">RSA can be mathematically sound and still lose its private key through a deployment mistake. Flip one bit in a signing calculation, or give two employees the same modulus, and watch arithmetic expose the secret.</p></div>
@@ -49,5 +50,25 @@ export function mountExtensionPanels(): void {
  </div>
  <p>The server leaks a bit of the raw RSA preimage for every ciphertext. Whether a padded deployment leaks this bit depends on where its decryption leaks. Compare the <a href="#tab-5" id="parity-related">Bleichenbacher oracle tab</a>; this panel makes no claim that OAEP or PSS leaks parity.</p>
  <p class="citation">Katz–Lindell §12.5.3, Theorem 12.31 (halving recovery); Alexi, Chor, Goldreich &amp; Schnorr, SIAM Journal on Computing 17 (1988), 194–209. All cryptographic operations and checks are real; this deliberately vulnerable server is only a local teaching example.</p>
+</section>
+<section id="panel-9" class="panel rsa-extension" role="tabpanel" aria-labelledby="tab-9" tabindex="0" hidden>
+ <div class="panel-header"><h2 class="panel-title">Fault the Verifier — Seifert's attack</h2><p class="panel-description">Every other fault panel here faults the signer. This one faults the device that CHECKS signatures. Flip a few bits of the modulus it holds until the faulted modulus is prime or easily factored; the attacker can then build a private exponent for that modulus and sign anything, and the faulted verifier accepts. No factoring of the real key.</p></div>
+ <div class="card"><h3 class="card-title">1. A toy run: fault a 512-bit modulus, forge a signature</h3><p>A real RSA-512 key is generated. The attack faults one byte of its modulus N through every value until the faulted N̂ is prime (or splits into small primes), computes d̂ = e<sup>−1</sup> mod φ(N̂), and signs your message. The real primes of N are never used.</p>
+  <label for="seifert-message">Message to forge a signature on</label><input class="form-input" id="seifert-message" value="Run my unsigned code." maxlength="120">
+  <div class="btn-group"><button class="btn btn-danger" id="seifert-forge">Fault the modulus and forge</button></div>
+  <p id="seifert-status" role="status" aria-live="polite">Forge a signature to begin.</p>
+  <div id="seifert-result" role="status" aria-live="polite"></div>
+  <details><summary>Inspect the faulted modulus and forged signature</summary><p>Fresh local teaching values; not stored or sent anywhere.</p><div id="seifert-values"></div></details>
+  <p class="citation">J. A. Muir, <a href="https://link.springer.com/chapter/10.1007/11889700_37">Seifert's RSA Fault Attack: Simplified Analysis and Generalizations</a> (2005), §2–§4. Original: J.-P. Seifert, ACM CCS 2005.</p>
+ </div>
+ <div class="card"><h3 class="card-title">2. The real 2048-bit Xbox modulus (Muir §4.3)</h3><p>Microsoft stored this 2048-bit RSA modulus in the Xbox; it appears in public source code and in Muir's paper. The two facts below are the paper's, recomputed in your browser from the printed modulus — not taken on faith.</p>
+  <details><summary>The modulus, 256 bytes, most significant first</summary><pre class="crypto-value" id="seifert-xbox-modulus" tabindex="0" role="region" aria-label="Xbox RSA modulus">${XBOX_DISPLAY}</pre></details>
+  <div class="btn-group"><button class="btn btn-secondary" id="seifert-xbox-run">Reproduce both facts</button></div>
+  <p id="seifert-xbox-status" role="status" aria-live="polite">Run to reproduce the smallest prime-making byte and the byte-16 factorization.</p>
+  <div id="seifert-xbox-result" role="status" aria-live="polite"></div>
+  <details><summary>Seifert's §3.1 success probabilities (prime-N̂ search, RSA-1024)</summary><p>1 − (1 − 0.00282)<sup>2<sup>b</sup>−1</sup>, the formula from Muir §3.1 for faults in <em>b</em> bits at one location. The b = 6 value here is 16.3%, not the 8.4% in the paper's Figure 3 — that cell uses 2<sup>5</sup>−1 trials where the text uses 2<sup>6</sup>−1, and is wrong; the b = 4 and b = 8 rows agree between the two.</p><table class="data-table"><caption class="sr-only">Seifert off-line success probability by fault width</caption><thead><tr><th scope="col">Fault width b (bits)</th><th scope="col">Success probability (§3.1)</th></tr></thead><tbody id="seifert-prob-rows">${seifertProbabilityRows()}</tbody></table></details>
+  <p class="citation">Modulus and both facts: Muir (2005), §4.3, from the “Operation X” source. p₀ is checked with the same Miller–Rabin the rest of this lab uses.</p>
+ </div>
+ <p>Not shown: physical fault injection against a real device; faults against (N, e) where only e is perturbed. This is a teaching demo, not production crypto.</p>
 </section>`);
 }

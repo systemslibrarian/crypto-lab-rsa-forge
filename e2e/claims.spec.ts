@@ -1119,7 +1119,7 @@ test('no result region is painted before the run that fills it', async ({ page }
 test('each tab reveals exactly one panel', async ({ page }) => {
   await load(page);
   const tabs = await page.locator(".tab-btn").count();
-  expect(tabs).toBe(8);
+  expect(tabs).toBe(9);
   for (let i = 1; i <= tabs; i++) {
     await page.locator(`#tab-${i}`).click();
     await expect(page.locator(`#panel-${i}`)).toBeVisible();
@@ -1129,6 +1129,92 @@ test('each tab reveals exactly one panel', async ({ page }) => {
       if (j !== i) await expect(page.locator(`#panel-${j}`)).toBeHidden();
     }
   }
+});
+
+
+/* Tab 9: Seifert's verifier-fault attack. The forged signature is re-verified
+ * here, and the two Xbox facts (Muir §4.3) are recomputed in the test from the
+ * modulus the panel renders — never trusted from the panel's own words. */
+test('Seifert toy: the forged signature verifies under the faulted modulus and not under the real one', async ({ page }) => {
+  await load(page);
+  await page.locator('#tab-9').click();
+  await page.locator('#seifert-forge').click();
+  await expect(page.locator('#seifert-faulted-check')).toHaveAttribute('data-state', 'pass');
+  await expect(page.locator('#seifert-faulted-check')).toContainText('ACCEPTS');
+  await expect(page.locator('#seifert-honest-check')).toHaveAttribute('data-state', 'pass');
+  await expect(page.locator('#seifert-honest-check')).toContainText('REJECTS');
+  await expect(page.locator('#seifert-result .status-chip-danger')).toContainText('FORGED');
+
+  // Re-derive it: pull N, e, N̂, h, s from the disclosed values and check
+  // s^e mod N̂ == h and s^e mod N != h, in the test's own BigInt.
+  await page.locator('#panel-9 details').first().locator('summary').click();
+  const val = async (id: string): Promise<bigint> => {
+    const t = ((await page.locator(`#seifert-${id}`).textContent()) ?? '').trim().replace(/\s/g, '');
+    return BigInt(/^[0-9]+$/.test(t) ? t : '0x' + t);
+  };
+  const N = await val('N');
+  const e = await val('e');
+  const nHat = await val('Nhat');
+  const h = await val('h');
+  const sig = await val('sig');
+  const modPow = (b: bigint, x: bigint, m: bigint): bigint => {
+    b %= m; let r = 1n; while (x > 0n) { if (x & 1n) r = (r * b) % m; b = (b * b) % m; x >>= 1n; } return r;
+  };
+  expect(modPow(sig, e, nHat)).toBe(h);
+  expect(modPow(sig, e, N)).not.toBe(h % N);
+});
+
+test('Seifert Xbox: byte 104 is prime-making and byte 16 factors as the paper states, from the rendered modulus', async ({ page }) => {
+  await load(page);
+  await page.locator('#tab-9').click();
+
+  // The panel renders the real modulus; read it and reproduce both facts here.
+  await page.locator('#panel-9 details').nth(1).locator('summary').click();
+  const hex = ((await page.locator('#seifert-xbox-modulus').textContent()) ?? '').replace(/\s/g, '');
+  expect(hex).toHaveLength(512);
+  const N = BigInt('0x' + hex);
+  expect(N.toString(2).length).toBe(2048);
+  const clearByte = (n: bigint, j: number): bigint => n - (((n >> (8n * BigInt(j))) & 0xffn) << (8n * BigInt(j)));
+  const mr = (n: bigint): boolean => {
+    if (n < 2n) return false;
+    for (const p of [2n,3n,5n,7n,11n,13n,17n,19n,23n,29n,31n,37n]) { if (n % p === 0n) return n === p; }
+    let d = n - 1n, r = 0n; while ((d & 1n) === 0n) { d >>= 1n; r++; }
+    const mp = (b: bigint, x: bigint, m: bigint): bigint => { b %= m; let z = 1n; while (x > 0n) { if (x & 1n) z = z*b%m; b = b*b%m; x >>= 1n; } return z; };
+    for (const a of [2n,3n,5n,7n,11n,13n,17n,19n,23n,29n,31n,37n]) {
+      let x = mp(a, d, n); if (x === 1n || x === n - 1n) continue; let comp = true;
+      for (let i = 0n; i < r - 1n; i++) { x = x*x%n; if (x === n - 1n) { comp = false; break; } }
+      if (comp) return false;
+    }
+    return true;
+  };
+  // byte 104 prime, nothing below it.
+  expect(mr(clearByte(N, 104))).toBe(true);
+  let smallest = -1;
+  for (let j = 0; j < 256 && smallest < 0; j++) { if (((N >> (8n*BigInt(j))) & 0xffn) !== 0n && mr(clearByte(N, j))) smallest = j; }
+  expect(smallest).toBe(104);
+  // byte 16: 3·13·199·856469·p0.
+  let c = clearByte(N, 16);
+  for (const p of [3n, 13n, 199n, 856469n]) { expect(c % p).toBe(0n); c /= p; }
+  expect(mr(c)).toBe(true);
+  expect(c.toString(2).length).toBeGreaterThan(2000);
+
+  // And the panel agrees.
+  await page.locator('#seifert-xbox-run').click();
+  await expect(page.locator('#seifert-xbox-prime')).toHaveAttribute('data-byte', '104');
+  await expect(page.locator('#seifert-xbox-b16')).toHaveAttribute('data-match', 'true');
+});
+
+test('Seifert probability note gives §3.1’s 16.3% for b=6, not Figure 3’s 8.4%', async ({ page }) => {
+  await load(page);
+  await page.locator('#tab-9').click();
+  await page.locator('#panel-9 details').nth(2).locator('summary').click();
+  const rows = page.locator('#seifert-prob-rows tr');
+  await expect(rows).toHaveCount(3);
+  const cells = await rows.nth(1).locator('td').allInnerTexts();
+  expect(cells[0].trim()).toBe('6');
+  expect(cells[1].trim()).toBe('16.3%');
+  const panel = await page.locator('#panel-9').innerText();
+  expect(panel).toContain('not the 8.4% in the paper');
 });
 
 

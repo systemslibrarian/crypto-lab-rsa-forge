@@ -326,7 +326,7 @@ export async function boot(page: Page, theme: 'dark' | 'light'): Promise<void> {
   // ── The tab machinery: one panel visible, five hidden ───────────────────
   await expect(page.locator('#panel-1')).toBeVisible();
   await expect(page.locator('#tab-1')).toHaveAttribute('aria-selected', 'true');
-  for (const n of [2, 3, 4, 5, 6, 7, 8]) {
+  for (const n of [2, 3, 4, 5, 6, 7, 8, 9]) {
     await expect(page.locator(`#panel-${n}`)).toBeHidden();
     await expect(page.locator(`#tab-${n}`)).toHaveAttribute('aria-selected', 'false');
   }
@@ -777,7 +777,7 @@ async function openPanel(page: Page, n: number): Promise<void> {
   await page.click(`#tab-${n}`);
   await expect(page.locator(`#tab-${n}`)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator(`#panel-${n}`)).toBeVisible();
-  for (const other of [1, 2, 3, 4, 5, 6]) {
+  for (const other of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
     if (other !== n) await expect(page.locator(`#panel-${other}`)).toBeHidden();
   }
 }
@@ -1228,4 +1228,11 @@ export async function driveExtensions(page:Page,label:string):Promise<void>{
   await page.locator('#tab-8').click();await scan(page,label+' parity arrival');await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await scan(page,label+' parity setup');for(let i=0;i<16;i++)await page.locator('#parity-step').click();await scan(page,label+' low two bytes');await page.locator('#parity-run').click();await expect(page.locator('#parity-negative')).toBeVisible({timeout:30_000});await scan(page,label+' parity negative fixture');
   await page.locator('#panel-8 details summary').click();await scan(page,label+' bit-only log');await page.locator('#parity-size').selectOption('2048');await page.locator('#parity-setup').click();await expect(page.locator('#parity-step')).toBeEnabled();await page.locator('#parity-run').click();await expect.poll(async()=>Number(await page.locator('#parity-count').textContent())).toBeGreaterThan(0);await page.locator('#parity-cancel').click();await expect(page.locator('#parity-status')).toContainText('Cancelled');await scan(page,label+' cancelled partial real-size recovery');
   await page.locator('#parity-message').fill('');await page.locator('#parity-setup').click();await expect(page.locator('#parity-status')).toContainText('nonempty');await scan(page,label+' empty refusal');
+  await page.locator('#tab-9').click();await scan(page,label+' seifert arrival');
+  await page.locator('#seifert-forge').click();await expect(page.locator('#seifert-faulted-check')).toHaveAttribute('data-state','pass');await expect(page.locator('#seifert-honest-check')).toHaveAttribute('data-state','pass');await scan(page,label+' verifier faulted, signature forged');
+  await page.locator('#panel-9 details').nth(0).locator('summary').click();await scan(page,label+' forged signature disclosure');
+  await page.locator('#panel-9 details').nth(1).locator('summary').click();await scan(page,label+' xbox modulus disclosure');
+  await page.locator('#seifert-xbox-run').click();await expect(page.locator('#seifert-xbox-prime')).toHaveAttribute('data-byte','104');await expect(page.locator('#seifert-xbox-b16')).toHaveAttribute('data-match','true');await scan(page,label+' xbox facts reproduced');
+  await page.locator('#panel-9 details').nth(2).locator('summary').click();await scan(page,label+' seifert probability disclosure');
+  await page.locator('#seifert-message').fill('');await page.locator('#seifert-forge').click();await expect(page.locator('#seifert-status')).toContainText('nonempty');await scan(page,label+' seifert empty refusal');
 }
