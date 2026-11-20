@@ -214,26 +214,77 @@ export const XBOX_MODULUS = BigInt('0x' + XBOX_MODULUS_HEX);
 /** Muir §4.3: "The modulus above consists of 256 bytes." */
 export const XBOX_BYTES = 256;
 
+/** Primes below 100,000, built once and cached, for trial-division fast-reject. */
+let SMALL_PRIMES: bigint[] | null = null;
+function smallPrimes(): bigint[] {
+  if (SMALL_PRIMES) return SMALL_PRIMES;
+  const limit = 100_000;
+  const sieve = new Uint8Array(limit + 1);
+  const primes: bigint[] = [];
+  for (let n = 2; n <= limit; n++) {
+    if (sieve[n]) continue;
+    primes.push(BigInt(n));
+    for (let m = n * n; m <= limit; m += n) sieve[m] = 1;
+  }
+  SMALL_PRIMES = primes;
+  return primes;
+}
+
+/**
+ * True iff n has a prime factor below 100,000 — a definitive proof that n is
+ * composite, cheaper than a Miller-Rabin round on a 2048-bit number. Returns
+ * false if no such factor exists; the caller must still run Miller-Rabin to
+ * decide primality in that case.
+ */
+function hasSmallFactor(n: bigint): boolean {
+  for (const p of smallPrimes()) {
+    if (p * p > n) return false; // p > sqrt(n): n has no factor to find below p
+    if (n % p === 0n) return true;
+  }
+  return false;
+}
+
+export interface XboxBytePrimality {
+  /** Byte index (little-endian) whose zeroing was tested. */
+  byte: number;
+  /** Whether zeroing that byte makes the modulus prime. */
+  isPrime: boolean;
+}
+
 export interface XboxPrimeSearch {
   /** The smallest byte index whose zeroing makes the modulus prime. Muir says 104. */
   smallestPrimeByte: number;
   /** Byte indices examined. */
   scanned: number;
+  /**
+   * Primality of every non-zero byte examined, in ascending scan order up to
+   * and including `smallestPrimeByte`. This single search is its own evidence
+   * for the "smallest" claim: a caller confirms it by reading these results
+   * rather than re-running the scan.
+   */
+  examined: XboxBytePrimality[];
 }
 
 /**
  * The smallest index j such that zeroing byte j of the Xbox modulus gives a
- * prime. Muir §4.3 states j = 104. Computed here with the same Miller-Rabin
- * the rest of the lab uses; nothing is asserted that the search does not find.
+ * prime. Muir §4.3 states j = 104. Each candidate is first trial-divided by
+ * the primes below 100,000 — a small factor is definitive proof of
+ * compositeness — and only survivors are put through the same Miller-Rabin the
+ * rest of the lab uses. The result is identical to testing every candidate
+ * with Miller-Rabin; nothing is asserted prime that Miller-Rabin does not
+ * confirm. Each byte's verdict is recorded in `examined`.
  */
 export function xboxSmallestPrimeByte(): XboxPrimeSearch {
+  const examined: XboxBytePrimality[] = [];
   for (let j = 0; j < XBOX_BYTES; j++) {
     const current = Number((XBOX_MODULUS >> (8n * BigInt(j))) & 0xffn);
     if (current === 0) continue;
     const candidate = faultByte(XBOX_MODULUS, j, 'zero');
-    if (millerRabin(candidate)) return { smallestPrimeByte: j, scanned: j + 1 };
+    const isPrime = !hasSmallFactor(candidate) && millerRabin(candidate);
+    examined.push({ byte: j, isPrime });
+    if (isPrime) return { smallestPrimeByte: j, scanned: j + 1, examined };
   }
-  return { smallestPrimeByte: -1, scanned: XBOX_BYTES };
+  return { smallestPrimeByte: -1, scanned: XBOX_BYTES, examined };
 }
 
 export interface XboxByte16 {
