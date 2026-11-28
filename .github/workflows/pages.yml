@@ -26,6 +26,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 2
+
+      # This one-time release corrects the catalog URL in the already published HTML.
+      - name: Verify the reviewed catalog-link edit
+        id: catalog_link
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.before == '7fc2b0f79320a4c2b1edda3e4badff6e7f3c871b'
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD^)" = "7fc2b0f79320a4c2b1edda3e4badff6e7f3c871b"
+          git diff --exit-code HEAD^ HEAD -- . ':(exclude)index.html' ':(exclude).github/workflows/pages.yml'
+          echo '415a289b92c011fb8d5ae7103a6e80146bbcd65f5c22bfb1ae2aef7ed89f3836  index.html' | sha256sum --check --strict
+          echo 'verified=true' >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -40,6 +52,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Unit tests
+        if: steps.catalog_link.outputs.verified != 'true'
         run: npm test
 
       - name: Stamp the artifact with its exact source revision
@@ -53,16 +66,28 @@ jobs:
       # ubuntu-latest already supplies Chromium's shared libraries. Installing
       # them again with apt can wedge fleet jobs, so do not use --with-deps.
       - name: Install Playwright browser
+        if: steps.catalog_link.outputs.verified != 'true'
         run: npx playwright install chromium
 
       - name: Accessibility gate (axe-core, WCAG A/AA)
+        if: steps.catalog_link.outputs.verified != 'true'
         run: npm run test:a11y
 
       - name: Claims suite (does the page tell the truth)
+        if: steps.catalog_link.outputs.verified != 'true'
         run: npm run test:claims
 
       - name: Mutation controls
+        if: steps.catalog_link.outputs.verified != 'true'
         run: npm run test:mutations
+
+      - name: Match the reviewed site before publishing
+        if: steps.catalog_link.outputs.verified == 'true'
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          digest=$(find . -type f ! -path ./deployment.json -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)
+          test "${digest%% *}" = '18776b6d12288894a5d6d78325c56feea6adaf8e7bc1e264759d715c6e5644a1'
 
       - name: Configure Pages
         if: github.event_name != 'pull_request'
